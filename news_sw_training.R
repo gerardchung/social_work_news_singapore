@@ -1,0 +1,413 @@
+# TEXT-MING SOCIAL WORK NEWS 
+# ==========================
+
+# To randomly sample 300 documents to develop a classification model
+# Training = 200; Test = 100
+
+
+rm(list = ls())
+
+library(textreadr)
+library(stringr)
+library(dplyr)
+getwd()
+
+# load RData dataset
+####################
+load(file = "cr_data/sw_news.RData")
+
+# Convert foldernum to numeric
+sw.news$foldernum  <- as.numeric(sw.news$foldernum)
+
+# Sample 300 txts
+####################
+set.seed(345)
+
+# shuffles the rows
+rows <- sample(nrow(sw.news))
+sw.news_shuffled <- sw.news[rows,]
+
+sw.news_sample <- sample_n(sw.news_shuffled, size = 1000, replace = F) # 270 is 20% of 1344
+View_randomsample <- sw.news_sample %>% 
+    select(1:2)
+table(sw.news_sample$foldernum)
+
+# create id 
+sw.news_sample <- mutate(sw.news_sample, id = row_number()) %>% 
+        relocate(id, .before = foldernum)
+
+
+getwd()
+save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData") 
+#xlsx::write.xlsx(sw.news_sample, "cr_data/sw_news_randomsample1000.xlsx")
+    # dont run this command again if you have coded the same file; it will rewrite it
+
+
+# CLEAN VARIABLES & CREATE PREDICTORS
+######################################
+    # keep original variables title and foldernum so that i can merge in later
+
+# title 
+# =====
+str_view(sw.news_sample$title, pattern = "[sS]ocial [wW]ork")
+sw.news_sample <- sw.news_sample %>% 
+    mutate(title_pred = str_detect(title, pattern = "[sS]ocial [wW]ork")) 
+            # see below to do case insensitivity
+
+
+sw.news_sample$title_pred <- case_when(sw.news_sample$title_pred == T ~ 1, 
+                                       sw.news_sample$title_pred == F ~ 0)
+
+title_pred_label = c("No phrase", "Has phrase")
+sw.news_sample$title_pred <- factor(sw.news_sample$title_pred, labels = title_pred_label)
+table(sw.news_sample$title_pred)
+
+# text
+# ====
+    # Num of times phrase appears
+str_view_all(sw.news_sample$text[84], regex(pattern = "social-work|social work", ignore_case = T))
+    # 76 has social-work
+
+sw.news_sample <- sw.news_sample %>% 
+    mutate(phrase_pred = str_count(text, regex(pattern = "social-work|social work", ignore_case = T)))
+summary(sw.news_sample$phrase_pred)
+
+require(ggplot2)
+ggplot(sw.news_sample, aes(x = phrase_pred) ) + geom_bar()
+
+View_phrase_pred <- sw.news_sample %>% 
+    filter(phrase_pred > 18)
+
+# section
+# ========
+unique(sw.news_sample$section)
+
+# Geographic
+# =========
+unique(sw.news_sample$geographic)
+str_view(sw.news_sample$geographic, pattern = "singapore")
+
+sw.news_sample <- sw.news_sample %>% 
+    mutate(geographic_pred = str_detect(geographic, regex(pattern = "singapore", ignore_case = T)))
+table(sw.news_sample$geographic_pred) # missing values because there are missing for geographic
+22+162
+
+#  replace missing values in geographic_pred conditional on the following two conditions:
+    # In text: the word Singapore appears
+    # In section: the word Home or Singapore appears (Home => "Home news" Singapre News")
+section_pattern <- c("Home", "Singapore")
+sw.news_sample <- sw.news_sample %>% 
+    mutate(sg_present_text    = str_detect(text,    regex(pattern = "singapore", ignore_case = T)),
+           sg_present_section = str_detect(section, regex(pattern = section_pattern, ignore_case = T))
+    )
+    
+view_phrase <-  select(sw.news_sample, text, sg_present_text, section, 
+                                           sg_present_section, geographic, geographic_pred )
+
+# To replace values in geographic_pred with conditions, two methods:
+
+# Method 1
+# sw.news_sample$geographic_pred <- replace(sw.news_sample$geographic_pred, 
+#                                           sw.news_sample$sg_present_text == T, T)
+# sw.news_sample$geographic_pred <- replace(sw.news_sample$geographic_pred, 
+#                                           sw.news_sample$sg_present_section == T, T)
+
+# Method 2: mutate can mutate an existing object
+sw.news_sample <- sw.news_sample %>% 
+        mutate(geographic_pred = replace(geographic_pred, 
+                                         sg_present_text == T | sg_present_section == T, T))
+
+
+
+table(sw.news_sample$geographic_pred) 
+16+219
+   
+sw.news_sample$geographic_pred <- as.numeric(sw.news_sample$geographic_pred)
+
+sw.news_sample$geographic_pred <- recode(sw.news_sample$geographic_pred, '1' = 2, '0' =1, .missing = 0 )
+
+geographic_pred_label <- c("no info", "no SG", "has SG")
+sw.news_sample$geographic_pred <- factor(sw.news_sample$geographic_pred, labels = geographic_pred_label)
+
+table(sw.news_sample$geographic_pred)
+ 35+16+219
+
+ 
+
+# text
+# =====
+    # title_pred_sw = # of times social work phrase appeared
+    # title_pred_keywords = # of times key words appeared
+        # key words = c("social service", "ministry", "ncss", "vwo", "sasw")
+    # title_pred_volunteering 
+
+pattern_keywords <- "social service|vwo|voluntary welfare organization|family service centre|fsc|ncss|singapore association of social workers|sasw"
+str_view(sw.news_sample$text[80], regex(pattern = pattern_keywords, ignore_case = T))
+
+sw.news_sample  <- sw.news_sample %>% 
+        mutate(keywords_pred = str_detect(sw.news_sample$text, 
+                                          regex(pattern = pattern_keywords, ignore_case = T)))
+
+sw.news_sample$keywords_pred <- case_when(sw.news_sample$keywords_pred == T ~ 1, 
+                                          sw.news_sample$keywords_pred == F ~ 0)
+
+view_keyword <- select(sw.news_sample, text, id , keywords_pred)
+table(sw.news_sample$keywords_pred)
+
+sw.news_sample$keywords_pred <- factor(sw.news_sample$keywords_pred, labels = c("no", "yes"))
+table(sw.news_sample$keywords_pred)
+
+# subject
+# ========
+head(sw.news_sample$subject, n=100)
+
+pattern_subject = "family services|abuse|family|children|youth|mental health|domestic violence|welfare|poverty|low income"
+
+str_view(sw.news_sample$subject, regex(pattern = pattern_subject, ignore_case = T))
+sw.news_sample <- sw.news_sample %>% 
+    mutate(subject_pred = str_detect(subject, 
+                                     regex(pattern = pattern_subject, ignore_case = T)))
+
+sw.news_sample$subject_pred <- case_when(sw.news_sample$subject_pred == T ~ 1,
+                                         sw.news_sample$subject_pred == F ~ 0,
+                                         is.na(sw.news_sample$subject_pred)  ~ 0)
+
+sw.news_sample$subject_pred <- factor(sw.news_sample$subject_pred, labels = c("no", "yes"))
+
+table(sw.news_sample$subject_pred , exclude = NULL)
+
+# REDUCE DATASET
+# ==============
+sw.news_sample_reduced <- sw.news_sample %>% 
+    select(1:3, ends_with("pred"))
+
+
+# Create test and train sets
+#############################
+
+# Merge in the handcoded labels "class"
+library(readxl)
+handcoded <- read_xlsx("cr_data/sw_news_randomsample1000_coded.xlsx", 
+                       col_names = T, 
+                       )
+tail(handcoded, n=5)
+
+table(handcoded$classify)
+
+handcoded <- handcoded %>% select(2:3, classify)
+
+validation <- inner_join(sw.news_sample_reduced, handcoded)
+glimpse(validation)
+summary(validation)
+table(validation$classify)
+
+head(validation$classify)
+str(validation$classify)
+#validation$classify <- if_else(validation$classify == "y", 1, 0)
+validation$classify <- factor(validation$classify, labels = c("n","y"))
+    # this will convert to factor with 1 and 2 
+    # 1/2 values for outcome does not matter in R for logisic reg
+    # converting to factor is helpful because confusionMatrix requires factors
+    
+
+
+# Create training set
+set.seed(345)
+train <- validation %>% slice_sample( prop = .80)
+# Create test set
+test  <- anti_join(validation, train, by = 'id')
+
+summary(validation)
+# Caret logistic regression
+############################
+library(caret)
+
+# model 1
+predictors1 <- c("phrase_pred", "title_pred", "geographic_pred", "subject_pred", "keywords_pred")
+formula1 <- formula(paste("classify ~", 
+                    paste(predictors1, collapse=" + "))
+                    ) 
+
+# model 2 interaction1
+predictors_interact <- c("phrase_pred", "title_pred", 
+                         "geographic_pred", "subject_pred", "keywords_pred", 
+                         "phrase_pred*keywords_pred")
+formula_interact <- formula(paste("classify ~", 
+                          paste(predictors_interact, collapse=" + "))
+                   ) 
+
+
+# Model 1: formula1 (no interaction)
+# ====================================
+sw_news_glm <- glm(formula =  formula1 ,
+                     data = train ,
+                     family = "binomial")
+
+
+sw_news_glm
+summary(sw_news_glm)
+exp(coef(sw_news_glm))
+
+p <- predict(sw_news_glm, test, type = "response")
+
+# ROC
+# ====
+library(caTools)
+colAUC(p, test$classify, plotROC = T)
+# calculates AUC = .85   
+
+
+thresh <- .5
+
+y_or_n <- ifelse(p > thresh, "y", "n")
+
+#table1 <- table(y_or_n, test$classify)
+
+# table_lowthreshold  <- table(y_or_n, test$classify)
+# table_highthreshold <- table(y_or_n, test$classify)
+# table_50hreshold <- table(y_or_n, test$classify)
+
+# confusionMatrix(table_lowthreshold , positive = "y")
+# confusionMatrix(table_highthreshold, positive = "y")
+# confusionMatrix(table_50hreshold, positive = "y")
+
+
+# confusionMatrix(table1)
+confusionMatrix(as.factor(y_or_n), as.factor(test$classify), positive = "y")
+    # confusionMatrix requires both to be factors or in table 
+    # this is better becos the output will show which is prediction and reference
+
+table(validation$classify) 
+186/270*100 # NIR no info rate: if we do not know anything, our best guess is to choose the majority class
+            # in this study, since y =186, the NIR is basically threshold p = 1
+
+
+# Model 2: formula_interaction (interaction)
+# ====================================
+sw_news_glm2 <- glm(formula =  formula_interact,
+                   data = train ,
+                   family = "binomial")
+
+
+sw_news_glm2
+summary(sw_news_glm2)
+exp(coef(sw_news_glm2))
+
+p2 <- predict(sw_news_glm2, test, type = "response")
+
+# ROC
+# ====
+colAUC(p2, test$classify, plotROC = T)
+# calculates AUC = .85 -> not difference from model1   
+
+thresh <- .5
+
+y_or_n2 <- ifelse(p2 > thresh, "y", "n")
+confusionMatrix(as.factor(y_or_n2), as.factor(test$classify), positive = "y")
+
+
+
+# Cross-validation
+#################
+formula1
+
+# CV settings
+# ============
+    # use train set only
+    # 5 fold becos small dataset 
+
+
+myControl <- trainControl(
+    method = "cv",
+    number = 10 ,
+    classProbs = T,
+    verboseIter = T
+)
+
+
+myControl_repeatedcv <- trainControl(
+    method = "repeatedcv",
+    number = 10 ,
+    repeats = 5, 
+    classProbs = T,
+    verboseIter = T
+)
+
+# GLM model
+# ========
+set.seed(222)
+model_lm <- train(
+    form = formula1, 
+    data = train,
+    method = "glm",
+    trControl = myControl
+)
+
+model_lm # Accuracy = .79 
+model_lm$finalModel 
+exp(model_lm$finalModel$coefficients) # odds ratio 
+
+model_lm$resample
+sd(model_lm$resample$Accuracy)
+
+
+set.seed(222)
+model_lm_repeatecv <- train(
+    form = formula1, 
+    data = validation,
+    method = "glm",
+    trControl = myControl_repeatedcv
+)
+
+model_lm_repeatecv # Accuracy = .79 
+model_lm_repeatecv$finalModel 
+exp(model_lm_repeatecv$finalModel$coefficients) # odds ratio 
+
+model_lm$resample
+sd(model_lm$resample$Accuracy)
+
+# GBM model (Stochastic Gradient Boosting)
+# =======================================
+set.seed(222)
+model_gbm <- train(
+    form = formula1, 
+    data = train,
+    method = "gbm",
+    trControl = myControl
+)
+
+model_gbm # Accuracy = .79
+model_gbm$finalModel 
+#exp(model_gbm$finalModel$coefficients) # odds ratio 
+
+model_gbm$resample
+sd(model_gbm$resample$Accuracy)
+
+
+
+# RF
+# =======================================
+set.seed(222)
+model_rf <- train(
+    form = formula1, 
+    data = train,
+    method = "ranger",
+    trControl = myControl
+)
+
+model_rf # Accuracy = .78
+model_rf$finalModel 
+#exp(model_gbm$finalModel$coefficients) # odds ratio 
+
+model_rf$resample
+sd(model_rf$resample$Accuracy)
+
+
+# CHOSEN MODEL
+##############
+final.train.model <- model_rf
+getwd()
+save(file = "cr_data/final_trained_model", final.train.model)
+
+
+
