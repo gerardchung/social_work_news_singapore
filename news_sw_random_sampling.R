@@ -27,7 +27,7 @@ set.seed(345)
 rows <- sample(nrow(sw.news))
 sw.news_shuffled <- sw.news[rows,]
 
-sw.news_sample <- sample_n(sw.news_shuffled, size = 800, replace = F) # 270 is 20% of 1344
+sw.news_sample <- sample_n(sw.news_shuffled, size = 1000, replace = F) # 270 is 20% of 1344
 View_randomsample <- sw.news_sample %>% 
     select(1:2)
 table(sw.news_sample$foldernum)
@@ -38,8 +38,8 @@ sw.news_sample <- mutate(sw.news_sample, id = row_number()) %>%
 
 
 getwd()
-save(sw.news_sample, file = "cr_data/sw_news_randomsample800.RData") 
-xlsx::write.xlsx(sw.news_sample, "cr_data/sw_news_randomsample800.xlsx")
+save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData") 
+#xlsx::write.xlsx(sw.news_sample, "cr_data/sw_news_randomsample1000.xlsx")
     # dont run this command again if you have coded the same file; it will rewrite it
 
 
@@ -114,7 +114,8 @@ view_phrase <-  select(sw.news_sample, text, sg_present_text, section,
 
 # Method 2: mutate can mutate an existing object
 sw.news_sample <- sw.news_sample %>% 
-        mutate(geographic_pred = replace(geographic_pred, sg_present_text == T | sg_present_section == T, T))
+        mutate(geographic_pred = replace(geographic_pred, 
+                                         sg_present_text == T | sg_present_section == T, T))
 
 
 
@@ -131,17 +132,21 @@ sw.news_sample$geographic_pred <- factor(sw.news_sample$geographic_pred, labels 
 table(sw.news_sample$geographic_pred)
  35+16+219
 
+ 
+
 # text
 # =====
     # title_pred_sw = # of times social work phrase appeared
     # title_pred_keywords = # of times key words appeared
-        # key words = c("social service", "ministry", "ncss", "vwo")
+        # key words = c("social service", "ministry", "ncss", "vwo", "sasw")
     # title_pred_volunteering 
 
+pattern_keywords <- "social service|vwo|voluntary welfare organization|family service centre|fsc|ncss|singapore association of social workers|sasw"
+str_view(sw.news_sample$text[80], regex(pattern = pattern_keywords, ignore_case = T))
+
 sw.news_sample  <- sw.news_sample %>% 
-        mutate(keywords_pred = str_detect(sw.news_sample$text, regex(pattern = "social service|vwo|ministry|fsc|ncss", ignore_case = T)))
-
-
+        mutate(keywords_pred = str_detect(sw.news_sample$text, 
+                                          regex(pattern = pattern_keywords, ignore_case = T)))
 
 sw.news_sample$keywords_pred <- case_when(sw.news_sample$keywords_pred == T ~ 1, 
                                           sw.news_sample$keywords_pred == F ~ 0)
@@ -150,14 +155,26 @@ view_keyword <- select(sw.news_sample, text, id , keywords_pred)
 table(sw.news_sample$keywords_pred)
 
 sw.news_sample$keywords_pred <- factor(sw.news_sample$keywords_pred, labels = c("no", "yes"))
+table(sw.news_sample$keywords_pred)
 
-## Phrase X key words interaction
-## =================================
-#
-#sw.news_sample$phrase_pred
-#sw.news_sample$keywords_pred
-#sw.news_sample$phrase_keyword_pred <- (sw.news_sample$phrase_pred)*(sw.news_sample$keywords_pred)
+# subject
+# ========
+head(sw.news_sample$subject, n=100)
 
+pattern_subject = "family services|abuse|family|children|youth|mental health|domestic violence|welfare|poverty|low income"
+
+str_view(sw.news_sample$subject, regex(pattern = pattern_subject, ignore_case = T))
+sw.news_sample <- sw.news_sample %>% 
+    mutate(subject_pred = str_detect(subject, 
+                                     regex(pattern = pattern_subject, ignore_case = T)))
+
+sw.news_sample$subject_pred <- case_when(sw.news_sample$subject_pred == T ~ 1,
+                                         sw.news_sample$subject_pred == F ~ 0,
+                                         is.na(sw.news_sample$subject_pred)  ~ 0)
+
+sw.news_sample$subject_pred <- factor(sw.news_sample$subject_pred, labels = c("no", "yes"))
+
+table(sw.news_sample$subject_pred , exclude = NULL)
 
 # REDUCE DATASET
 # ==============
@@ -170,14 +187,21 @@ sw.news_sample_reduced <- sw.news_sample %>%
 
 # Merge in the handcoded labels "class"
 library(readxl)
-handcoded <- read_xlsx("cr_data/sw_news_randomsample270_coded.xlsx", 
+handcoded <- read_xlsx("cr_data/sw_news_randomsample1000_coded.xlsx", 
                        col_names = T, 
                        )
-handcoded <- handcoded %>% select(1:3, classify)
+tail(handcoded, n=5)
+
+table(handcoded$classify)
+
+handcoded <- handcoded %>% select(2:3, classify)
 
 validation <- inner_join(sw.news_sample_reduced, handcoded)
+glimpse(validation)
+summary(validation)
+table(validation$classify)
 
-validation$classify
+head(validation$classify)
 str(validation$classify)
 #validation$classify <- if_else(validation$classify == "y", 1, 0)
 validation$classify <- factor(validation$classify, labels = c("n","y"))
@@ -185,44 +209,32 @@ validation$classify <- factor(validation$classify, labels = c("n","y"))
     # 1/2 values for outcome does not matter in R for logisic reg
     # converting to factor is helpful because confusionMatrix requires factors
     
+
+
 # Create training set
 set.seed(345)
-train <- validation %>% slice_sample( prop = .60)
+train <- validation %>% slice_sample( prop = .80)
 # Create test set
 test  <- anti_join(validation, train, by = 'id')
 
-
+summary(validation)
 # Caret logistic regression
 ############################
 library(caret)
 
 # model 1
-predictors1 <- c("phrase_pred", "title_pred", "geographic_pred", "keywords_pred")
+predictors1 <- c("phrase_pred", "title_pred", "geographic_pred", "subject_pred", "keywords_pred")
 formula1 <- formula(paste("classify ~", 
                     paste(predictors1, collapse=" + "))
                     ) 
 
 # model 2 interaction1
-predictors_interact <- c("phrase_pred", "title_pred", "geographic_pred", "keywords_pred", 
+predictors_interact <- c("phrase_pred", "title_pred", 
+                         "geographic_pred", "subject_pred", "keywords_pred", 
                          "phrase_pred*keywords_pred")
 formula_interact <- formula(paste("classify ~", 
                           paste(predictors_interact, collapse=" + "))
                    ) 
-
-# model 3 interaction2
-predictors_interact2 <- c("phrase_pred", "title_pred", "geographic_pred", "keywords_pred", 
-                         "phrase_pred*keywords_pred", "phrase_pred*title_pred")
-formula_interact2 <- formula(paste("classify ~", 
-                                  paste(predictors_interact2, collapse=" + "))
-                            ) 
-
-#sw_news_train <- train(
-#    form = formula1 ,
-#    data = train ,
-#    method = "glm" , 
-#    family = "binomial"
-#)
-#
 
 
 # Model 1: formula1 (no interaction)
@@ -294,27 +306,6 @@ y_or_n2 <- ifelse(p2 > thresh, "y", "n")
 confusionMatrix(as.factor(y_or_n2), as.factor(test$classify), positive = "y")
 
 
-# Model 3: formula_interaction3 (interaction3)
-# ====================================
-sw_news_glm3 <- glm(formula =  formula_interact2,
-                    data = train ,
-                    family = "binomial")
-
-
-sw_news_glm3
-summary(sw_news_glm3)
-exp(coef(sw_news_glm3))
-
-p3 <- predict(sw_news_glm3, test, type = "response")
-
-# ROC
-# ====
-colAUC(p3, test$classify, plotROC = T)
-# calculates AUC = .85 -> not difference from model2 or 1  
-
-thresh <- .5
-y_or_n3 <- ifelse(p3 > thresh, "y", "n")
-confusionMatrix(as.factor(y_or_n3), as.factor(test$classify), positive = "y")
 
 # Cross-validation
 #################
@@ -328,8 +319,16 @@ formula1
 
 myControl <- trainControl(
     method = "cv",
-    number = 5 ,
-   # summaryFunction = twoClassSummary,
+    number = 10 ,
+    classProbs = T,
+    verboseIter = T
+)
+
+
+myControl_repeatedcv <- trainControl(
+    method = "repeatedcv",
+    number = 10 ,
+    repeats = 5, 
     classProbs = T,
     verboseIter = T
 )
@@ -344,9 +343,25 @@ model_lm <- train(
     trControl = myControl
 )
 
-model_lm # Accuracy = .78 
+model_lm # Accuracy = .79 
 model_lm$finalModel 
 exp(model_lm$finalModel$coefficients) # odds ratio 
+
+model_lm$resample
+sd(model_lm$resample$Accuracy)
+
+
+set.seed(222)
+model_lm_repeatecv <- train(
+    form = formula1, 
+    data = validation,
+    method = "glm",
+    trControl = myControl_repeatedcv
+)
+
+model_lm_repeatecv # Accuracy = .79 
+model_lm_repeatecv$finalModel 
+exp(model_lm_repeatecv$finalModel$coefficients) # odds ratio 
 
 model_lm$resample
 sd(model_lm$resample$Accuracy)
@@ -376,7 +391,7 @@ set.seed(222)
 model_rf <- train(
     form = formula1, 
     data = train,
-    method = "rf",
+    method = "ranger",
     trControl = myControl
 )
 
