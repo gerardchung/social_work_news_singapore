@@ -41,6 +41,7 @@ save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData")
 # xlsx::write.xlsx(sw.news_sample, "cr_data/sw_news_randomsample1000.xlsx")
     # dont run this command again if you have coded the same file; it will rewrite it
 
+ 
 
 # CLEAN VARIABLES & CREATE PREDICTORS
 ######################################
@@ -103,18 +104,27 @@ table(sw.news_sample$geographic_pred , exclude = NULL)
 # If still missing, then fill value "not sure"
 
 section_pattern <- "home|singapore"
+section_pattern_negate <- "asia|world|malaysia"  # news in the asia/world section will be exclude i.e. False
+
+#str_view_all(sw.news$section, regex(pattern = section_pattern_negate, ignore_case = T))
+
 sw.news_sample <- sw.news_sample %>% 
     mutate(sg_present_text    = str_detect(text,    regex(pattern = "singapore", ignore_case = T)),
-           sg_present_section = str_detect(section, regex(pattern = section_pattern, ignore_case = T))
+           sg_present_section = str_detect(section, regex(pattern = section_pattern, ignore_case = T)),
+           asia_world_section       = str_detect(section, regex(pattern = section_pattern_negate, ignore_case = T))
     )
     
 view_phrase <-  select(sw.news_sample, text, sg_present_text, section, 
-                                           sg_present_section, geographic, geographic_pred )
+                                           sg_present_section, asia_world_section, geographic, geographic_pred )
 
 
 sw.news_sample <- sw.news_sample %>% 
         mutate(geographic_pred = replace(geographic_pred, 
-                                         sg_present_text == T | sg_present_section == T, T))
+                                         sg_present_text == T | sg_present_section == T, T),
+               geographic_pred = replace(geographic_pred, 
+                                         asia_world_section == T , F)
+               )
+
 # the abv command replace geographic_pred with TRUE if it meets the both conditions
 # But there is still missing 
 
@@ -135,9 +145,9 @@ table(sw.news_sample$geographic_pred)
 # key words in text
 # =================
     # keywords_pred = Did key words appeared? (yes/no)
-    # key words = "social service", "ministry", "ncss", "vwo", "sasw" "fsc"
+    # key words = "social service", "social-service", "ministry", "ncss", "vwo", "sasw" "fsc"
 
-pattern_keywords <- "social service|vwo|voluntary welfare organization|family service centre|fsc|ncss|singapore association of social workers|sasw"
+pattern_keywords <- "social service|social-service|vwo|voluntary welfare organization|family service centre|fsc|ncss|singapore association of social workers|sasw|s r nathan|ann wee"
 
 #str_view(sw.news_sample$text[80], regex(pattern = pattern_keywords, ignore_case = T))
 
@@ -159,7 +169,8 @@ table(sw.news_sample$keywords_pred, exclude = NULL)
       # Did list of subject appeared? (yes/no)
 head(sw.news_sample$subject, n=100)
 
-pattern_subject = "family services|abuse|family|children|youth|mental health|domestic violence|welfare|poverty|low income"
+pattern_subject = "family services|abuse|family|children|youth|mental health|domestic violence|welfare|poverty|low income|elderly|senior citizen|criminal|crime|corrections|
+nursing home|counsel|marriage|neglect|university"
 
 str_view(sw.news_sample$subject, regex(pattern = pattern_subject, ignore_case = T))
 sw.news_sample <- sw.news_sample %>% 
