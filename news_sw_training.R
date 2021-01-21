@@ -19,6 +19,10 @@ load(file = "cr_data/sw_news.RData")
 # Convert foldernum to numeric
 sw.news$foldernum  <- as.numeric(sw.news$foldernum)
 
+# create id 
+sw.news <- mutate(sw.news, id = row_number()) %>% 
+  relocate(id, .before = foldernum)
+
 # Sample 300 txts
 ####################
 set.seed(345)
@@ -32,14 +36,9 @@ View_randomsample <- sw.news_sample %>%
     select(1:2)
 table(sw.news_sample$foldernum)
 
-# create id 
-sw.news_sample <- mutate(sw.news_sample, id = row_number()) %>% 
-        relocate(id, .before = foldernum)
-
-
 getwd()
 save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData") 
-#xlsx::write.xlsx(sw.news_sample, "cr_data/sw_news_randomsample1000.xlsx")
+xlsx::write.xlsx(sw.news_sample, "cr_data/sw_news_randomsample1000.xlsx")
     # dont run this command again if you have coded the same file; it will rewrite it
 
 
@@ -191,6 +190,8 @@ handcoded <- read_xlsx("cr_data/sw_news_randomsample1000_coded.xlsx",
                        col_names = T, 
                        )
 tail(handcoded, n=5) # check last five rows
+tail(sw.news_sample_reduced, n=5) # check last five rows
+
 table(handcoded$classify) # no information rate = 70% 
 
 handcoded <- handcoded %>% select(2:3, classify) # keep 3 vars 
@@ -198,6 +199,7 @@ handcoded <- handcoded %>% select(2:3, classify) # keep 3 vars
 validation <- inner_join(sw.news_sample_reduced, handcoded)
 glimpse(validation)
 summary(validation)
+tail(validation, n = 5)
 table(validation$classify, exclude = NULL)
 
 head(validation$classify)
