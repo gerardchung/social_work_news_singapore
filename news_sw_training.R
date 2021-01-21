@@ -1,5 +1,6 @@
+########################################
 # TEXT-MING SOCIAL WORK NEWS 
-# ==========================
+########################################
 
 # To randomly sample 1000 documents to develop a classification model
 # Cross-validation = 1000; Remaining 344 will be predicted
@@ -23,25 +24,7 @@ sw.news$foldernum  <- as.numeric(sw.news$foldernum)
 sw.news <- mutate(sw.news, id = row_number()) %>% 
   relocate(id, .before = foldernum)
 
-# Sample 300 txts
-####################
-set.seed(345)
 
-# shuffles the rows
-rows <- sample(nrow(sw.news))
-sw.news_shuffled <- sw.news[rows,]
-
-sw.news_sample <- sample_n(sw.news_shuffled, size = 1000, replace = F) # 1000 of 1344
-View_randomsample <- sw.news_sample %>% 
-    select(1:2)
-table(sw.news_sample$foldernum)
-
-getwd()
-save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData") 
-# xlsx::write.xlsx(sw.news_sample, "cr_data/sw_news_randomsample1000.xlsx")
-    # dont run this command again if you have coded the same file; it will rewrite it
-
- 
 
 # CLEAN VARIABLES & CREATE PREDICTORS
 ######################################
@@ -50,51 +33,51 @@ save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData")
 # title 
 # =====
     # does Social work appear in title? (yes/no)
-str_view(sw.news_sample$title, pattern = "[sS]ocial [wW]ork")
-sw.news_sample <- sw.news_sample %>% 
+str_view(sw.news$title, pattern = "[sS]ocial [wW]ork")
+sw.news <- sw.news %>% 
     mutate(title_pred = str_detect(title, pattern = "[sS]ocial [wW]ork")) 
             # see below to do case insensitivity
 
 
-sw.news_sample$title_pred <- case_when(sw.news_sample$title_pred == T ~ 1, 
-                                       sw.news_sample$title_pred == F ~ 0)
+sw.news$title_pred <- case_when(sw.news$title_pred == T ~ 1, 
+                                sw.news$title_pred == F ~ 0)
 
 title_pred_label = c("No phrase", "Has phrase")
-sw.news_sample$title_pred <- factor(sw.news_sample$title_pred, labels = title_pred_label)
-table(sw.news_sample$title_pred, exclude = NULL)
+sw.news$title_pred <- factor(sw.news$title_pred, labels = title_pred_label)
+table(sw.news$title_pred, exclude = NULL)
 
 # text
 # ====
     # Num of times phrase appears
-str_view_all(sw.news_sample$text[84], 
+str_view_all(sw.news$text[84], 
              regex(pattern = "social-work|social work", ignore_case = T))
-    # 76 has social-work
 
-sw.news_sample <- sw.news_sample %>% 
+
+sw.news <- sw.news %>% 
     mutate(phrase_pred = str_count(text, regex(pattern = "social-work|social work", ignore_case = T)))
-summary(sw.news_sample$phrase_pred)
+summary(sw.news$phrase_pred)
 
-require(ggplot2)
-ggplot(sw.news_sample, aes(x = phrase_pred) ) + geom_bar()
+#require(ggplot2)
+#ggplot(sw.news, aes(x = phrase_pred) ) + geom_bar()
 
-View_phrase_pred <- sw.news_sample %>% 
+View_phrase_pred <- sw.news %>% 
     filter(phrase_pred > 18)
 
 # section
 # ========
-unique(sw.news_sample$section[1:10])
+unique(sw.news$section[1:10])
 
 # Geographic
 # =========
     # this predictor will have three conditions: In Singapore, not in Singapore, Not sure
-unique(sw.news_sample$geographic[1:20]) # there are NA
+unique(sw.news$geographic[1:20]) # there are NA
 
-str_view(sw.news_sample$geographic, regex(pattern = "singapore", ignore_case = T))
+str_view(sw.news$geographic, regex(pattern = "singapore", ignore_case = T))
 
-sw.news_sample <- sw.news_sample %>% 
+sw.news <- sw.news %>% 
     mutate(geographic_pred = str_detect(geographic, regex(pattern = "singapore", ignore_case = T)))
 
-table(sw.news_sample$geographic_pred , exclude = NULL) 
+table(sw.news$geographic_pred , exclude = NULL) 
     # missing values because there are missing for geographic
     # i will fill in the NA using two conditions below
 
@@ -108,17 +91,17 @@ section_pattern_negate <- "asia|world|malaysia"  # news in the asia/world sectio
 
 #str_view_all(sw.news$section, regex(pattern = section_pattern_negate, ignore_case = T))
 
-sw.news_sample <- sw.news_sample %>% 
+sw.news <- sw.news %>% 
     mutate(sg_present_text    = str_detect(text,    regex(pattern = "singapore", ignore_case = T)),
            sg_present_section = str_detect(section, regex(pattern = section_pattern, ignore_case = T)),
-           asia_world_section       = str_detect(section, regex(pattern = section_pattern_negate, ignore_case = T))
+           asia_world_section = str_detect(section, regex(pattern = section_pattern_negate, ignore_case = T))
     )
     
-view_phrase <-  select(sw.news_sample, text, sg_present_text, section, 
+view_phrase <-  select(sw.news, text, sg_present_text, section, 
                                            sg_present_section, asia_world_section, geographic, geographic_pred )
 
 
-sw.news_sample <- sw.news_sample %>% 
+sw.news <- sw.news %>% 
         mutate(geographic_pred = replace(geographic_pred, 
                                          sg_present_text == T | sg_present_section == T, T),
                geographic_pred = replace(geographic_pred, 
@@ -128,17 +111,17 @@ sw.news_sample <- sw.news_sample %>%
 # the abv command replace geographic_pred with TRUE if it meets the both conditions
 # But there is still missing 
 
-table(sw.news_sample$geographic_pred, exclude = NULL) 
+table(sw.news$geographic_pred, exclude = NULL) 
 
-sw.news_sample$geographic_pred <- case_when(sw.news_sample$geographic_pred == T ~ "SG",
-                                            sw.news_sample$geographic_pred == F ~ "Not SG",
-                                           is.na(sw.news_sample$geographic_pred) ~ "unsure")
-table(sw.news_sample$geographic_pred, exclude = NULL) 
+sw.news$geographic_pred <- case_when(sw.news$geographic_pred == T ~ "SG",
+                                     sw.news$geographic_pred == F ~ "Not SG",
+                               is.na(sw.news$geographic_pred) ~ "unsure")
 
-sw.news_sample$geographic_pred <- factor(sw.news_sample$geographic_pred)
-table(sw.news_sample$geographic_pred)                             
+table(sw.news$geographic_pred, exclude = NULL) 
 
-table(sw.news_sample$geographic_pred)
+sw.news$geographic_pred <- factor(sw.news$geographic_pred)
+table(sw.news$geographic_pred)                             
+
 
 
 
@@ -151,39 +134,64 @@ pattern_keywords <- "social service|social-service|vwo|voluntary welfare organiz
 
 #str_view(sw.news_sample$text[80], regex(pattern = pattern_keywords, ignore_case = T))
 
-sw.news_sample  <- sw.news_sample %>% 
-        mutate(keywords_pred = str_detect(sw.news_sample$text, 
+sw.news  <- sw.news %>% 
+        mutate(keywords_pred = str_detect(text, 
                                           regex(pattern = pattern_keywords, ignore_case = T)))
 
-sw.news_sample$keywords_pred <- case_when(sw.news_sample$keywords_pred == T ~ 1, 
-                                          sw.news_sample$keywords_pred == F ~ 0)
+sw.news$keywords_pred <- case_when(sw.news$keywords_pred == T ~ 1, 
+                                   sw.news$keywords_pred == F ~ 0)
 
-view_keyword <- select(sw.news_sample, text, id , keywords_pred)
-table(sw.news_sample$keywords_pred, exclude = NULL)
+view_keyword <- select(sw.news, text, id , keywords_pred)
+table(sw.news$keywords_pred, exclude = NULL)
 
-sw.news_sample$keywords_pred <- factor(sw.news_sample$keywords_pred, labels = c("no", "yes"))
-table(sw.news_sample$keywords_pred, exclude = NULL)
+sw.news$keywords_pred <- factor(sw.news$keywords_pred, labels = c("no", "yes"))
+table(sw.news$keywords_pred, exclude = NULL)
 
 # subject
 # ========
       # Did list of subject appeared? (yes/no)
-head(sw.news_sample$subject, n=100)
+head(sw.news$subject, n=100)
 
 pattern_subject = "family services|abuse|family|children|youth|mental health|domestic violence|welfare|poverty|low income|elderly|senior citizen|criminal|crime|corrections|
 nursing home|counsel|marriage|neglect|university"
 
-str_view(sw.news_sample$subject, regex(pattern = pattern_subject, ignore_case = T))
-sw.news_sample <- sw.news_sample %>% 
+str_view(sw.news$subject, regex(pattern = pattern_subject, ignore_case = T))
+sw.news <- sw.news %>% 
     mutate(subject_pred = str_detect(subject, 
                                      regex(pattern = pattern_subject, ignore_case = T)))
 
-sw.news_sample$subject_pred <- case_when(sw.news_sample$subject_pred == T ~ 1,
-                                         sw.news_sample$subject_pred == F ~ 0,
-                                         is.na(sw.news_sample$subject_pred)  ~ 0)
+sw.news$subject_pred <- case_when(sw.news$subject_pred == T ~ 1,
+                                  sw.news$subject_pred == F ~ 0,
+                                  is.na(sw.news$subject_pred)  ~ 0)
 
-sw.news_sample$subject_pred <- factor(sw.news_sample$subject_pred, labels = c("no", "yes"))
+sw.news$subject_pred <- factor(sw.news$subject_pred, labels = c("no", "yes"))
 
-table(sw.news_sample$subject_pred , exclude = NULL)
+table(sw.news$subject_pred , exclude = NULL)
+
+
+
+# Sample 300 txts
+####################
+
+set.seed(345)
+
+# shuffles the rows
+rows <- sample(nrow(sw.news))
+sw.news_shuffled <- sw.news[rows,]
+
+sw.news_sample <- sample_n(sw.news_shuffled, size = 1000, replace = F) # 1000 of 1344
+View_randomsample <- sw.news_sample %>% 
+  select(1:2)
+table(sw.news_sample$foldernum)
+
+getwd()
+save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData") 
+
+sw.news_sample_randomsample1000 <- sw.news_sample %>% 
+  select(-ends_with("_pred"), -ends_with("_section"), -ends_with("_text"))
+
+# xlsx::write.xlsx(sw.news_sample_randomsample1000, "cr_data/sw_news_randomsample1000.xlsx")
+  # dont run this command again if you have coded the same file; it will rewrite it
 
 
 # REDUCE DATASET
@@ -191,6 +199,7 @@ table(sw.news_sample$subject_pred , exclude = NULL)
 sw.news_sample_reduced <- sw.news_sample %>% 
     select(1:3, ends_with("pred"))
 summary(sw.news_sample_reduced) # check no NA
+
 
 # Create test and train sets
 #############################
@@ -205,9 +214,9 @@ tail(sw.news_sample_reduced, n=5) # check last five rows
 
 table(handcoded$classify) # no information rate = 70% 
 
-handcoded <- handcoded %>% select(2:3, classify) # keep 3 vars 
+handcoded <- handcoded %>% select(2:4, classify) # keep 3 vars 
 
-validation <- inner_join(sw.news_sample_reduced, handcoded)
+validation <- inner_join(sw.news_sample_reduced, handcoded, by = c("id", "title"))
 glimpse(validation)
 summary(validation)
 tail(validation, n = 5)
@@ -273,7 +282,7 @@ p <- predict(sw_news_glm, test, type = "response")
 # ====
 library(caTools)
 colAUC(p, test$classify, plotROC = T)
-# calculates AUC = .85   
+# calculates AUC = .8529  
 
 thresh <- .5
 
@@ -314,7 +323,7 @@ p2 <- predict(sw_news_glm2, test, type = "response")
 # ROC
 # ====
 colAUC(p2, test$classify, plotROC = T)
-# calculates AUC = .85 -> not difference from model1   
+# calculates AUC = .8545 -> not difference from model1   
 
 thresh <- .5
 
@@ -367,7 +376,7 @@ model_lm <- train(
     trControl = myControl
 )
 
-model_lm # Accuracy = .78
+model_lm # Accuracy = .78 // ROC = .88
 model_lm$finalModel 
 exp(model_lm$finalModel$coefficients) # odds ratio 
 
@@ -390,14 +399,14 @@ model_lm_repeatecv <- train(
                         trControl = myControl_repeatedcv
 )
 
-model_lm_repeatecv # Accuracy = .79 
+model_lm_repeatecv # Accuracy = .79 ; ROC = .88
 model_lm_repeatecv$finalModel 
 exp(model_lm_repeatecv$finalModel$coefficients) # odds ratio 
 
 model_lm_repeatecv$resample
 sd(model_lm_repeatecv$resample$Accuracy)
 
-model_lm_repeatecv$results # ROC = .873, SD = .03
+model_lm_repeatecv$results # ROC = .8797, SD = .03
 
 
 
