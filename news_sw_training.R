@@ -38,7 +38,7 @@ table(sw.news_sample$foldernum)
 
 getwd()
 save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData") 
-xlsx::write.xlsx(sw.news_sample, "cr_data/sw_news_randomsample1000.xlsx")
+# xlsx::write.xlsx(sw.news_sample, "cr_data/sw_news_randomsample1000.xlsx")
     # dont run this command again if you have coded the same file; it will rewrite it
 
 
