@@ -169,6 +169,10 @@ sw.news$subject_pred <- factor(sw.news$subject_pred, labels = c("no", "yes"))
 table(sw.news$subject_pred , exclude = NULL)
 
 
+# SAVE DATAFRAME
+#################
+  # this dataframe will reloaded in prediction do-file for predicting the remaining documents
+save(sw.news, file = "cr_data/sw_news.RData")
 
 # Sample 300 txts
 ####################
@@ -455,6 +459,7 @@ model_rf$results
 final.train.model <- model_lm_repeatecv # GLM with repeated CV 
 getwd()
 save(file = "cr_data/final_trained_model", final.train.model)
+
 
 
 
