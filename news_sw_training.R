@@ -11,6 +11,7 @@ rm(list = ls())
 library(textreadr)
 library(stringr)
 library(dplyr)
+library(caret)
 getwd()
 
 # load RData dataset
@@ -33,7 +34,7 @@ sw.news <- mutate(sw.news, id = row_number()) %>%
 # title 
 # =====
     # does Social work appear in title? (yes/no)
-str_view(sw.news$title, pattern = "[sS]ocial [wW]ork")
+#str_view(sw.news$title, pattern = "[sS]ocial [wW]ork")
 sw.news <- sw.news %>% 
     mutate(title_pred = str_detect(title, pattern = "[sS]ocial [wW]ork")) 
             # see below to do case insensitivity
@@ -46,11 +47,11 @@ title_pred_label = c("No phrase", "Has phrase")
 sw.news$title_pred <- factor(sw.news$title_pred, labels = title_pred_label)
 table(sw.news$title_pred, exclude = NULL)
 
+
 # text
 # ====
     # Num of times phrase appears
-str_view_all(sw.news$text[84], 
-             regex(pattern = "social-work|social work", ignore_case = T))
+# str_view_all(sw.news$text[84],  regex(pattern = "social-work|social work", ignore_case = T))
 
 
 sw.news <- sw.news %>% 
@@ -63,6 +64,11 @@ summary(sw.news$phrase_pred)
 View_phrase_pred <- sw.news %>% 
     filter(phrase_pred > 18)
 
+sw.news <- sw.news %>% 
+  mutate(log.phrase_pred = log(phrase_pred + .0001)) %>% 
+  relocate(log.phrase_pred, .after = phrase_pred)
+summary(sw.news$log.phrase_pred)
+
 # section
 # ========
 unique(sw.news$section[1:10])
@@ -72,7 +78,7 @@ unique(sw.news$section[1:10])
     # this predictor will have three conditions: In Singapore, not in Singapore, Not sure
 unique(sw.news$geographic[1:20]) # there are NA
 
-str_view(sw.news$geographic, regex(pattern = "singapore", ignore_case = T))
+#str_view(sw.news$geographic, regex(pattern = "singapore", ignore_case = T))
 
 sw.news <- sw.news %>% 
     mutate(geographic_pred = str_detect(geographic, regex(pattern = "singapore", ignore_case = T)))
@@ -92,13 +98,14 @@ section_pattern_negate <- "asia|world|malaysia"  # news in the asia/world sectio
 #str_view_all(sw.news$section, regex(pattern = section_pattern_negate, ignore_case = T))
 
 sw.news <- sw.news %>% 
-    mutate(sg_present_text    = str_detect(text,    regex(pattern = "singapore", ignore_case = T)),
-           sg_present_section = str_detect(section, regex(pattern = section_pattern, ignore_case = T)),
-           asia_world_section = str_detect(section, regex(pattern = section_pattern_negate, ignore_case = T))
+ mutate(
+   sg_present_text    = str_detect(text, regex(pattern = "singapore", ignore_case = T)),
+   sg_present_section = str_detect(section, regex(pattern = section_pattern, ignore_case = T)),
+  asia_world_section = str_detect(section, regex(pattern = section_pattern_negate, ignore_case = T))
     )
     
 view_phrase <-  select(sw.news, text, sg_present_text, section, 
-                                           sg_present_section, asia_world_section, geographic, geographic_pred )
+                  sg_present_section, asia_world_section, geographic, geographic_pred )
 
 
 sw.news <- sw.news %>% 
@@ -121,7 +128,6 @@ table(sw.news$geographic_pred, exclude = NULL)
 
 sw.news$geographic_pred <- factor(sw.news$geographic_pred)
 table(sw.news$geographic_pred)                             
-
 
 
 
@@ -155,7 +161,7 @@ head(sw.news$subject, n=100)
 pattern_subject = "family services|abuse|family|children|youth|mental health|domestic violence|welfare|poverty|low income|elderly|senior citizen|criminal|crime|corrections|
 nursing home|counsel|marriage|neglect|university"
 
-str_view(sw.news$subject, regex(pattern = pattern_subject, ignore_case = T))
+#str_view(sw.news$subject, regex(pattern = pattern_subject, ignore_case = T))
 sw.news <- sw.news %>% 
     mutate(subject_pred = str_detect(subject, 
                                      regex(pattern = pattern_subject, ignore_case = T)))
@@ -168,11 +174,14 @@ sw.news$subject_pred <- factor(sw.news$subject_pred, labels = c("no", "yes"))
 
 table(sw.news$subject_pred , exclude = NULL)
 
+swnews_withpreds <- sw.news
+
+
 
 # SAVE DATAFRAME
 #################
-  # this dataframe will reloaded in prediction do-file for predicting the remaining documents
-save(sw.news, file = "cr_data/sw_news.RData")
+  # this dataframe will be reloaded in prediction do-file for predicting the remaining documents
+save(swnews_withpreds, file = "cr_data/swnews_withpreds.RData")
 
 # Sample 300 txts
 ####################
@@ -180,8 +189,8 @@ save(sw.news, file = "cr_data/sw_news.RData")
 set.seed(345)
 
 # shuffles the rows
-rows <- sample(nrow(sw.news))
-sw.news_shuffled <- sw.news[rows,]
+rows <- sample(nrow(swnews_withpreds))
+sw.news_shuffled <- swnews_withpreds[rows,]
 
 sw.news_sample <- sample_n(sw.news_shuffled, size = 1000, replace = F) # 1000 of 1344
 View_randomsample <- sw.news_sample %>% 
@@ -202,6 +211,7 @@ sw.news_sample_randomsample1000 <- sw.news_sample %>%
 # ==============
 sw.news_sample_reduced <- sw.news_sample %>% 
     select(1:3, ends_with("pred"))
+
 summary(sw.news_sample_reduced) # check no NA
 
 
@@ -248,6 +258,7 @@ summary(validation)
 ############################
 library(caret)
 
+
 # Create formula 
 # ===============
 
@@ -257,6 +268,13 @@ formula1 <- formula(paste("classify ~",
                     paste(predictors1, collapse=" + "))
                     ) 
 formula1
+
+# model log.phrase_pred
+predictors_log <- c("log.phrase_pred", "title_pred", "geographic_pred", "subject_pred", "keywords_pred")
+formula_log <- formula(paste("classify ~", 
+                          paste(predictors_log, collapse=" + "))
+) 
+formula_log
 
 
 # model 2 interaction1
@@ -281,6 +299,8 @@ summary(sw_news_glm)
 exp(coef(sw_news_glm))
 
 p <- predict(sw_news_glm, test, type = "response")
+
+
 
 # ROC
 # ====
@@ -414,6 +434,27 @@ model_lm_repeatecv$results # ROC = .8797, SD = .03
 
 
 
+# CV repeated GLM log.phrase_pred
+set.seed(222)
+model_lm_repeatecv_log <- train(
+  form = formula_log, 
+  data = validation,
+  method = "glm",
+  trControl = myControl_repeatedcv
+)
+
+model_lm_repeatecv_log # Accuracy = .79 ; ROC = .88
+model_lm_repeatecv_log$finalModel 
+exp(model_lm_repeatecv_log$finalModel$coefficients) # odds ratio 
+
+model_lm_repeatecv_log$resample
+sd(model_lm_repeatecv_log$resample$Accuracy)
+
+model_lm_repeatecv_log$results # ROC = .8797, SD = .03
+
+
+
+
 # GBM model (Stochastic Gradient Boosting)
 # =======================================
 set.seed(222)
@@ -421,7 +462,7 @@ model_gbm <- train(
     form = formula1, 
     data = validation,
     method = "gbm",
-    trControl = myControl
+    trControl = myControl_repeatedcv
 )
 
 model_gbm # Accuracy = .79 do we use this or below command?
@@ -434,6 +475,29 @@ sd(model_gbm$resample$Accuracy)
 model_gbm$results
 
 
+# GBM model with log pred
+# =======================================
+set.seed(222)
+model_gbm_logpred <- train(
+  form = formula_log, 
+  data = validation,
+  method = "gbm",
+  trControl = myControl_repeatedcv
+)
+
+model_gbm_logpred # Accuracy = .79 do we use this or below command?
+model_gbm_logpred$finalModel 
+#exp(model_gbm$finalModel$coefficients) # odds ratio 
+
+model_gbm_logpred$resample 
+sd(model_gbm_logpred$resample$Accuracy)
+
+model_gbm_logpred$results
+
+
+
+
+
 # RF
 # =======================================
 set.seed(222)
@@ -441,7 +505,7 @@ model_rf <- train(
     form = formula1, 
     data = validation,
     method = "ranger",
-    trControl = myControl
+    trControl = myControl_repeatedcv
 )
 
 model_rf # Accuracy = .80
@@ -454,11 +518,62 @@ sd(model_rf$resample$Accuracy)
 model_rf$results
 
 
+# COMPARE MODELS
+################
+resamps <- resamples(list(
+                   lm_repeatcv = model_lm_repeatecv,
+                   lm_repeatcv_logpred = model_lm_repeatecv_log,
+                   gbm = model_gbm,
+                   gbm_logpred = model_gbm_logpred, 
+                   rf = model_rf)
+                   )
+
+summary(resamps)
+
+modelDifferences <- diff(resamps)
+summary(modelDifferences)
+
+?xyplot.resamples
+dotplot(resamps,
+        scales =list(x = list(relation = "free")),
+        between = list(x = 2))
+
+#bwplot(resamps,
+#       metric = "ROC")
+#
+#splom(resamps, variables = "metrics")
+#parallelplot(resamps, metric = "ROC")
+
+
+
 # CHOSEN MODEL
 ##############
-final.train.model <- model_lm_repeatecv # GLM with repeated CV 
+
+#save.image(file = "cr_data/news_sw_predict.RData")
+#
+#rm(list = ls())
+#load("cr_data/news_sw_predict.RData")
+
+
+final_trained_model <- model_lm_repeatecv #model_gbm 
+      #model_lm_repeatecv_log   # GLM with repeated CV   model_lm_repeatecv
 getwd()
-save(file = "cr_data/final_trained_model", final.train.model)
+save(file = "cr_data/final_trained_model", final_trained_model)
+
+
+# Confusion matrix
+
+confusionMatrix(model_lm_repeatecv, norm = "overall") # default is average across in percentage 
+confusionMatrix(model_lm_repeatecv, norm = "none") # aggegrate across
+
+# ROC with cross-valid
+library(pROC)
+myRoc <- roc(predictor = model_gbm$pred$versicolor, response = model$pred$obs, positive = 'versicolor')
+plot(myRoc)
+
+#There are several ways to show the table entries. Using norm = "none" will show the  #aggregated counts of samples on each of the cells (across all resamples). For norm =  #"average", the average number of cell counts across resamples is computed (this can help  #evaluate how many holdout samples there were on average). The default is norm = "overall",  #which is equivalento to "average" but in percentages.
+  
+
 
 
 
