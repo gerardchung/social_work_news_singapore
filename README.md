@@ -6,13 +6,13 @@ Text-mining news on SW in Singapore
 - I searched for news articles in Lexis-Nexis Academic (now Nexis Uni)
 - Search date 6th Jan 2020 – 1344 articles
 - Search parameters
-    (1) Date: all date range
-    (2) Language: English
-    (3) Date: All available dates 
-    (4) Source:
-        - Channel NewsAsia
-        - Today (Singapore) – Online
-        - The Straits Times (Singapore)
+(1) Date: all date range
+(2) Language: English
+(3) Date: All available dates 
+(4) Source:
+   - Channel NewsAsia
+   - Today (Singapore) – Online
+   - The Straits Times (Singapore)
 - Searct strategy: 
     (social work) OR (social worker*)  -> Headline
     OR 
