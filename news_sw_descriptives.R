@@ -238,6 +238,9 @@ data_dictionary_LSD2015$neg_negative[1000:1100] # flip the positive word
 
 #toks = tokens(title_corpus)
 toks <- tokens_compound(tokens(title_corpus), data_dictionary_LSD2015)
+  # tokenized first. It says in the website that it is better to copound words first
+  # Not sure if we can do tokenization in the dfm command next
+  # After tokenizing, then change it to DFM
 
 dfm_toks <- dfm(toks, 
                 tolower = T,
@@ -246,43 +249,31 @@ dfm_toks <- dfm(toks,
                 remove_separators = T,
                 remove = c(phrase(mystopwords), stopwords()),
                 stem = F)
+  # change to DFM + remove my custom lust of words
 
-dfm_lookup(dfm_toks,data_dictionary_LSD2015 )
-
-coded <- dfm_lookup(dfm(toks), data_dictionary_LSD2015)
-
-
-
-
-# First, you need to tokenize the documents:
-toks = tokens(title_corpus,                      
-              remove_numbers = T,
-              remove_punct = T,
-              remove_separators = T)
-
-toks_no.socialwrk <- tokens_select(toks, pattern = phrase(mystopwords), selection = "remove")
-
-# Code our titles using the LSD dictionary:
-coded <- tokens_lookup(toks_no.socialwrk, dictionary =  data_dictionary_LSD2015)
-
-head(coded, 3)
+dfm_lsd_coded <- dfm_lookup(dfm_toks,data_dictionary_LSD2015 )
+  # dfm_lookup links the words to the dictionary
+  
+head(dfm_lsd_coded, n = 3)
 
 # Using the coded terms, we make a document_term matrix...then convert to dataframe
-dfm_lsd = dfm(coded)
-valences_by_title <- dfm_lsd %>% 
-        convert(to = "data.frame") %>% 
-        cbind(docvars(dfm_lsd)) 
-            # this last line keeps the docvars (meta id)
-            # so that i can analyze valence over time
+
+valences_by_title <- dfm_lsd_coded %>% 
+      convert(to = "data.frame") %>% 
+      cbind(docvars(dfm_lsd_coded)) 
+      # this last line keeps the docvars (meta id)
+      # so that i can analyze valence over time
 
 # We may also want/need the total number of terms per document. 
-all_words = dfm(toks_no.socialwrk)
-valences_by_title$total_words = rowSums(all_words)
+
+head(dfm_toks) 
+valences_by_title$total_words = rowSums(dfm_toks) # dfm_toks is the dfm of the text with pre-processing done
 
 
 # Calculate Y&S measure: 
 valences_by_title$valence = (valences_by_title$positive/valences_by_title$total_words) - 
                             (valences_by_title$negative/valences_by_title$total_words)
+
 
 #valences_by_title$valence = (valences_by_title$positive)  - (valences_by_title$negative)
 
@@ -331,6 +322,14 @@ p + geom_point(size =3, aes(color = below0)) + geom_vline(xintercept=0, linetype
     geom_segment(aes(yend = pub_year), xend = 0, colour = "grey50") + theme_bw() +
     theme(panel.grid.major.y = element_blank()) 
 
+year2001 <- corpus_subset(title_corpus, pub_year == 2001) 
+year2000 <- corpus_subset(title_corpus, pub_year == 2000) 
+year1999 <- corpus_subset(title_corpus, pub_year == 1999)
+
+View(year2001)
+View(year2000)
+View(year1999)
+table(an_swnews$pub_year)
 # point (Cleveland dot plot) + FORUM
 
 by_year_forum <- valences_by_title %>% group_by(pub_year, section_forum) %>% 
