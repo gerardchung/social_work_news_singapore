@@ -9,7 +9,7 @@ Text-mining news on SW in Singapore
 (1) Date: all date range
 (2) Language: English
 (3) Date: All available dates 
-(4) Source:
+(4) Sources are the three newspapers in Singapore:
    - Channel NewsAsia
    - Today (Singapore) – Online
    - The Straits Times (Singapore)
