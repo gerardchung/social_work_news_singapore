@@ -9,16 +9,25 @@ library(dplyr)
 getwd()
 # First, let's create a list of the files, which is the same first step we've seen before. However, here we can just use your computer's file structures and R commands to do so. 
 
+    # Keep in mind a few things that can happen:
+    #  there might be hidden files in the folder: do shift+command+dot to reveal hidden file. 
+    #  There is one in folder 1 "1/~$h, a social worker. I manually remove this file from the folder. 
+
+
 # Extract file names
-file.list = list.files("data", recursive = T) # recursive will perform in each directory 
-file.list = str_subset(file.list, pattern = "doc_list", negate = T)
+file.list = list.files("source_data", pattern = "\\D", recursive = T) # recursive will perform in each directory 
+#file.list = list.files("source_data", recursive = T) # recursive will perform in each directory 
+
+# Remove those with "original_data" pattern
+file.list = str_subset(file.list, pattern = "original_data", negate = T) 
+file.list = str_subset(file.list, pattern = "1/~$h, a social worker", negate = T)
+# Remove those files with doc_list -> these are files that database Lexis Academic created to summarize the articles
+sum(str_detect(file.list, pattern = "doc_list")) # check for these two patterns
+sum(str_detect(file.list, pattern = "_doclist")) # 
+file.list = str_subset(file.list, pattern = "_doclist", negate = T) # remove those with "_doclist" 
+file.list = str_subset(file.list, pattern = "doc_list", negate = T) # but sometimes it can be this too; remove both
 sum(str_detect(file.list, pattern = "doc_list")) # check if still have
-sum(str_detect(file.list, pattern = "_doclist")) # 1345 values because there is this unknown "_$_doclist" value
-
-file.list = str_subset(file.list, pattern = "_doclist", negate = T ) # remove this last value
-
-sum(str_detect(file.list, pattern = "_doclist")) # check if still have
-sum(str_detect(file.list, pattern = "doc_list"))
+sum(str_detect(file.list, pattern = "_doclist")) 
 
 
 # folder number 
@@ -31,11 +40,11 @@ summary(as.numeric(foldernum))
 
 # Let's make those full file paths that can be used to download the files.
 file.list
-file.list2 = paste("data",file.list, sep="/") 
-                # data because /data directory
+file.list2 = paste("source_data",file.list, sep="/") 
+                # source_data because /source_data
                 # change if the directory is different
-                # paste data + file.list, separated by /
-                # e.g., data + / + 1/Desire to serve draws more t....docx 
+                # paste source_data + file.list, separated by /
+                # e.g., source_data + / + 1/Desire to serve draws more t....docx 
 
 #file.list2[1:2]
 
@@ -56,7 +65,9 @@ file.list2 = paste("data",file.list, sep="/")
     # Next, let's grab each of the options that has an explicit tag.
 
     (section = gsub("Section:","",trial[grepl("Section:",trial,fixed=T)] ,fixed=T))
-            # Same as abv -> 
+            # grepl() will find in trial the pattern = "Section" and return a logical vector.
+            # If true, then trial[ ] will take out that entire string value
+            # gsub will remove remove from that string value "Section:" and replace with "" (blank)
     (section = str_replace(trial[str_detect(trial, "Section:")], pattern = "Section:", replacement =""))
             # Need to first detect because the trial is in a vector
     (words = gsub("Length:","",trial[grepl("Length:",trial,fixed=T)] ,fixed=T))
@@ -82,6 +93,7 @@ file.list2 = paste("data",file.list, sep="/")
     
     # the abv codes with one doc show that we can do these to get info
     # the below begins to write codes with loop to get same info from ALL docs
+
 
     
 # Now that we know how to extract all the information we can kick it up a notch and write a loop. 
@@ -161,6 +173,5 @@ sw.news <- sw.news %>%
 # ====================
 getwd()
 save(sw.news, file = "cr_data/sw_news.RData") 
-
 
 
