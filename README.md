@@ -1,5 +1,6 @@
 
-# Text-mining news on Social Work Profession in Singapore
+# Text-mining news on Social Work Profession in Singapore 
+:singapore:
 
 ## Data-collection
 I searched for news articles in Nexis Uni (then it was called Lexis-Nexis Academic)
