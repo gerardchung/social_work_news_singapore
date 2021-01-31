@@ -1,6 +1,8 @@
 
 # Text-mining news on Social Work Profession in Singapore :singapore:
 
+**README WORK IN PROGRESS**
+
 ## Data-collection
 I searched for news articles in Nexis Uni (then it was called Lexis-Nexis Academic)
 
@@ -10,7 +12,7 @@ A total of 7167 articles downloaded in docx format
 
 **Search parameters**
 
- (1) Date: all date range
+ (1) Date of articles: all date range
  
  (2) Language: English
  
@@ -31,6 +33,14 @@ A total of 7167 articles downloaded in docx format
  (6) Search fields: “All fields” (i.e., including title, leading section, body etc)
 
 **Results of search**: 7167 articles spanning year 1992-2021
+
+## Data-preprocessing
+
+### Cleaning 
+Data needs to be checked for duplicates. If downloads are made from Lexis Academic, 
+the downloading process may include hidden files in the folders. This will create problems
+when using the codes (command filelist) to create file names and file pathways. 
+
 
 **Task List**
 
