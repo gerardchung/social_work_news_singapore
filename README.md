@@ -25,13 +25,13 @@ A total of 7167 articles downloaded in docx format
  
  (4) Sources are the three newspapers in Singapore:
  
-* [Channel NewsAsia](https://www.channelnewsasia.com/news/singapore)
+  * [Channel NewsAsia](https://www.channelnewsasia.com/news/singapore)
         
-* [Today (Singapore) – Online](https://www.todayonline.com/)
+  * [Today (Singapore) – Online](https://www.todayonline.com/)
         
-* [The Straits Times (Singapore)](https://www.straitstimes.com/global)
+  * [The Straits Times (Singapore)](https://www.straitstimes.com/global)
         
-* [The Business Times (Singapore)](https://www.businesstimes.com.sg/)
+  * [The Business Times (Singapore)](https://www.businesstimes.com.sg/)
         
  (5) Search string: "(social work) OR (social worker\*) OR (social-work) OR (social-worker\*)"
  
