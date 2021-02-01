@@ -20,19 +20,21 @@ A total of 7167 articles downloaded in docx format
  
  (4) Sources are the three newspapers in Singapore:
  
-        - Channel NewsAsia
+        - [Channel NewsAsia](https://www.channelnewsasia.com/news/singapore)
         
-        - Today (Singapore) – Online
+        - [Today (Singapore) – Online](https://www.todayonline.com/)
         
-        - The Straits Times (Singapore)
+        - [The Straits Times (Singapore)](https://www.straitstimes.com/global)
         
-        - The Business Times (Singapore
+        - [The Business Times (Singapore)](https://www.businesstimes.com.sg/)
         
  (5) Search string: "(social work) OR (social worker\*) OR (social-work) OR (social-worker\*)"
  
  (6) Search fields: “All fields” (i.e., including title, leading section, body etc)
 
 **Results of search**: 7167 articles spanning year 1992-2021
+
+***Note: Lexis University's policies do not allow me to share the data***
 
 ## Data-preprocessing
 
