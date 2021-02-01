@@ -4,6 +4,10 @@
 # After finalizing the dataset in "predicting", i now:
 # (1) clean
 # (2) do some descriptives
+# N = 5168 
+
+# SECTION A. PREPARE THE VARIABLES
+## Code up the predictors
 
 Packages <- c("dplyr", "ggplot2",  "ggplot2", "stringr", "xlsx")
 lapply(Packages, library, character.only = TRUE)
@@ -119,6 +123,19 @@ table(an_swnews$section_forum, exclude = F) # 96 are forum/ letters
 
 table(an_swnews$section_forum)
 an_swnews$section_forum <- factor(an_swnews$section_forum, labels = c("articles", "forum letters"))
+
+# Source
+######## 
+unique(an_swnews$source)
+an_swnews <- an_swnews %>% mutate(source = replace(source, source == ("Today (Singapore) - Online") , "Today"))
+an_swnews <- an_swnews %>% mutate(source = replace(source, source == ("TODAY (Singapore)") , "Today"))         
+
+an_swnews$source <-  replace(an_swnews$source, an_swnews$source =="The Straits Times (Singapore)" , "Straits Times")
+an_swnews$source <-  replace(an_swnews$source, an_swnews$source =="The Straits Times" , "Straits Times")
+
+unique(an_swnews$source)
+an_swnews$source <- factor(an_swnews$source)
+table(an_swnews$source)
 
 # title 
 ########
@@ -325,10 +342,12 @@ p + geom_point(size =3, aes(color = below0)) + geom_vline(xintercept=0, linetype
 year2001 <- corpus_subset(title_corpus, pub_year == 2001) 
 year2000 <- corpus_subset(title_corpus, pub_year == 2000) 
 year1999 <- corpus_subset(title_corpus, pub_year == 1999)
+year1996 <- corpus_subset(title_corpus, pub_year == 1996)
 
 View(year2001)
 View(year2000)
 View(year1999)
+View(year1996)
 table(an_swnews$pub_year)
 # point (Cleveland dot plot) + FORUM
 
@@ -368,7 +387,26 @@ p + geom_pointrange(aes(ymin = valence_mean - valence_sd, ymax = valence_mean + 
 lm.valences_by_title = lm(valence ~ as.numeric(pub_year) , data = valences_by_title)
 summary(lm.valences_by_title)
 
-# lm.year_articles = glm(num_articles~as.numeric(pub_year), family="poisson", data = year_articles)
+
+################ # article by year
+
+year_articles_source <- an_swnews %>% 
+  group_by(pub_year, source) %>% 
+  summarize(num_articles = n()) %>% 
+  ungroup()
+lm.year_articles = glm(num_articles~as.numeric(pub_year), family="poisson", data = year_articles_source)
+
+lm.year_articles = glm(num_articles~as.numeric(pub_year)*source, family="poisson", data = year_articles_source)
+summary(lm.year_articles)
+
+p <- ggplot(data = year_articles_source, mapping = aes(x = as.numeric(pub_year),y = num_articles)) +
+  geom_line(color = "gray60", size = 1, aes(group = source) ) + 
+  geom_smooth(method = "lm", se = FALSE, aes(group = source)) +
+  labs(x = "Year", y = "Number of articles") +
+  ggtitle("Number of articles to Year 1994-2020") 
+p
+ 
+# lm.year_articles = glm(num_articles~as.numeric(pub_year)*source, family="poisson", data = year_articles)
 # summary(lm.year_articles)
 # year_articles$pub_year <- as.numeric(year_articles$pub_year)
 # library(gganimate)
@@ -404,19 +442,3 @@ summary(lm.valences_by_title)
 #     labs(x = "Year", y = "Number of articles") +
 #     ggtitle("Number of articles to Year 1992-2020")
 
-
-# Practice ICPSR files
-######################
-# data frame to corpuse
-janitor::tabyl(an_swnews$id)
-
-my_corp <- corpus(an_swnews, 
-                  docid_field = "id",
-                  text_field = "text")
-head(summary(my_corp), n=5)
-summary(summary(my_corp))
-
-head(kwic(my_corp, pattern = phrase("social work*"), 
-          valuetype = "regex") , n =50)
-    # it shows the text id and the lines becos phrase can appear > once
-View(an_swnews$text[1])

@@ -1,9 +1,20 @@
 ########################################
 # TEXT-MING SOCIAL WORK NEWS 
 ########################################
+## Section A 
+# I will first prepare the predictors for the training model to dev a classficiation model
 
+## Section B 
+  # Then, I need to check for duplicates in titles of documents.
+  # Remove also year 2021
+
+## Section C
 # To randomly sample 1000 documents to develop a classification model
-# Cross-validation = 1000; Remaining 344 will be predicted
+# This will training set will be saved in an excel and manually labelled
+# Then it will be joinned in (merge) and training models will be used
+# What models: (1) Logistic reg; (2) GBM (3) RF
+# Resampling will used: 10-fold CV (repeated 5)
+# Cross-validation = 1000; Remaining 6000+ will be predicted
 
 
 rm(list = ls())
@@ -25,7 +36,9 @@ sw.news$foldernum  <- as.numeric(sw.news$foldernum)
 sw.news <- mutate(sw.news, id = row_number()) %>% 
   relocate(id, .before = foldernum)
 
-
+#############
+## Section A
+############# 
 
 # CLEAN VARIABLES & CREATE PREDICTORS
 ######################################
@@ -61,7 +74,7 @@ summary(sw.news$phrase_pred)
 #require(ggplot2)
 #ggplot(sw.news, aes(x = phrase_pred) ) + geom_bar()
 
-View_phrase_pred <- sw.news %>% 
+View.phrase_pred <- sw.news %>% 
     filter(phrase_pred > 18)
 
 sw.news <- sw.news %>% 
@@ -104,7 +117,7 @@ sw.news <- sw.news %>%
   asia_world_section = str_detect(section, regex(pattern = section_pattern_negate, ignore_case = T))
     )
     
-view_phrase <-  select(sw.news, text, sg_present_text, section, 
+view.phrase <-  select(sw.news, text, sg_present_text, section, 
                   sg_present_section, asia_world_section, geographic, geographic_pred )
 
 
@@ -130,7 +143,6 @@ sw.news$geographic_pred <- factor(sw.news$geographic_pred)
 table(sw.news$geographic_pred)                             
 
 
-
 # key words in text
 # =================
     # keywords_pred = Did key words appeared? (yes/no)
@@ -147,7 +159,7 @@ sw.news  <- sw.news %>%
 sw.news$keywords_pred <- case_when(sw.news$keywords_pred == T ~ 1, 
                                    sw.news$keywords_pred == F ~ 0)
 
-view_keyword <- select(sw.news, text, id , keywords_pred)
+view.keyword <- select(sw.news, text, id , keywords_pred)
 table(sw.news$keywords_pred, exclude = NULL)
 
 sw.news$keywords_pred <- factor(sw.news$keywords_pred, labels = c("no", "yes"))
@@ -174,38 +186,106 @@ sw.news$subject_pred <- factor(sw.news$subject_pred, labels = c("no", "yes"))
 
 table(sw.news$subject_pred , exclude = NULL)
 
+
+# Source
+########
+
+unique(sw.news$source)
+
+# Today
+sw.news$source_pred <-  replace(sw.news$source_pred, sw.news$source =="Today (Singapore) - Online" , "Today")
+sw.news$source_pred <-  replace(sw.news$source_pred, sw.news$source ==("TODAY (Singapore)") , "Today")
+
+# ST
+sw.news$source_pred <-  replace(sw.news$source_pred, sw.news$source =="The Straits Times (Singapore)" , "Straits Times")
+sw.news$source_pred <-  replace(sw.news$source_pred, sw.news$source =="The Straits Times" , "Straits Times")
+
+# BT
+sw.news$source_pred <-  replace(sw.news$source_pred, sw.news$source =="The Business Times Singapore" , "Business Times")
+sw.news$source_pred <-  replace(sw.news$source_pred, sw.news$source =="Business Times (Singapore)" , "Business Times")
+
+# CNA
+sw.news$source_pred <-  replace(sw.news$source_pred, sw.news$source =="Channel NewsAsia" , "Channel NewsAsia")
+
+
+unique(sw.news$source)
+unique(sw.news$source_pred)
+
+sw.news$source_pred <- factor(sw.news$source_pred)
+
+table(sw.news$source_pred, exclude = F)
+table(sw.news$source, exclude = F)
+
+
+#############
+## Section B
+############# 
+
+# FILTER OUT THOSE THAT ARE IN 2021 YEAR
+#########################################
 swnews_withpreds <- sw.news
 
+# Check for year 2021
+swnews_withpreds$year <-  str_extract(swnews_withpreds$pub.date, pattern = "\\d{4}")
+table(swnews_withpreds$year)
+
+# Check for duplicates in titles
+swnews_withpreds$title_duplicates <- duplicated(swnews_withpreds$title)
+
+View.duplicates <- swnews_withpreds %>% 
+  select(title, text, pub.date, title_duplicates) %>% 
+  filter(title_duplicates == T)
+# View(View.duplicates) # these obs are duplicates but will not include the original ones
+
+# Remove both year 2021 and duplicates in titles
+swnews_withpreds <- swnews_withpreds %>% 
+    filter(year != "2021") %>%  # removre year 2021
+    filter(title_duplicates != T)  %>%  # remove duplicates in titles
+    select(-(year), -(title_duplicates)) # remove these two variables
+
+sum(duplicated(swnews_withpreds$title)) # check again if have duplicates
+
+nrow(swnews_withpreds) # N = 6951 (after removing year 2021 and duplicates in titles)
 
 
+#############
+## Section C
+############# 
+  
 # SAVE DATAFRAME
 #################
   # this dataframe will be reloaded in prediction do-file for predicting the remaining documents
 save(swnews_withpreds, file = "cr_data/swnews_withpreds.RData")
 
-# Sample 300 txts
+
+# Sample 1000 txts
 ####################
 
-set.seed(345)
+#set.seed(345)
+set.seed(346)
 
 # shuffles the rows
 rows <- sample(nrow(swnews_withpreds))
 sw.news_shuffled <- swnews_withpreds[rows,]
 
-sw.news_sample <- sample_n(sw.news_shuffled, size = 1000, replace = F) # 1000 of 1344
-View_randomsample <- sw.news_sample %>% 
+sw.news_sample <- sample_n(sw.news_shuffled, size = 1000, replace = F) # 300 of 1344
+
+View.randomsample <- sw.news_sample %>% 
   select(1:2)
+
 table(sw.news_sample$foldernum)
 
 getwd()
-save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData") 
+save(sw.news_sample, file = "cr_data/sw_news_randomsample1000lexis.RData") 
+#old: save(sw.news_sample, file = "cr_data/sw_news_randomsample1000.RData") 
 
 sw.news_sample_randomsample1000 <- sw.news_sample %>% 
   select(-ends_with("_pred"), -ends_with("_section"), -ends_with("_text"))
 
-# xlsx::write.xlsx(sw.news_sample_randomsample1000, "cr_data/sw_news_randomsample1000.xlsx")
+#xlsx::write.xlsx(sw.news_sample_randomsample1000, "cr_data/sw_news_randomsample1000lexis.xlsx")
   # dont run this command again if you have coded the same file; it will rewrite it
 
+# old: xlsx::write.xlsx(sw.news_sample_randomsample1000, "cr_data/sw_news_randomsample1000.xlsx")
 
 # REDUCE DATASET
 # ==============
@@ -214,30 +294,46 @@ sw.news_sample_reduced <- sw.news_sample %>%
 
 summary(sw.news_sample_reduced) # check no NA
 
+View.sw.news_sample_reduced <- sw.news_sample_reduced %>% 
+  select(1:2, title)
+
+# Remove objects from Memory
+rm(View.duplicates)
+rm(View.phrase_pred, View.randomsample, View.sw.news_sample_reduced, view.keyword, view.phrase)
+rm(sw.news_sample, sw.news_sample_randomsample1000, sw.news_shuffled)
 
 # Create test and train sets
 #############################
 
 # Merge in the handcoded labels "class"
 library(readxl)
-handcoded <- read_xlsx("cr_data/sw_news_randomsample1000_coded.xlsx", 
+handcoded <- read_xlsx("cr_data/sw_news_randomsample1000lexis_labelled.xlsx", 
                        col_names = T, 
                        )
+
+glimpse(handcoded)
+
 tail(handcoded, n=5) # check last five rows
 tail(sw.news_sample_reduced, n=5) # check last five rows
 
-table(handcoded$classify) # no information rate = 70% 
+table(handcoded$classify) # no information rate = 66% 
+663/1000 # no information rate = 66% 
 
-handcoded <- handcoded %>% select(2:4, classify) # keep 3 vars 
+handcoded <- handcoded %>% select(3,title, classify) # keep 3 vars 
 
-validation <- inner_join(sw.news_sample_reduced, handcoded, by = c("id", "title"))
-glimpse(validation)
+# old:validation <- inner_join(sw.news_sample_reduced, handcoded, by = c("id", "title"))
+
+validation <- inner_join(sw.news_sample_reduced, handcoded, by = c("id", "title")) 
+
+view.validation <- validation %>% select(id, title, classify)
+
 summary(validation)
 tail(validation, n = 5)
 table(validation$classify, exclude = NULL)
 
 head(validation$classify)
 str(validation$classify)
+
 #validation$classify <- if_else(validation$classify == "y", 1, 0)
 validation$classify <- factor(validation$classify, labels = c("n","y"))
     # this will convert to factor with 1 and 2 
@@ -263,14 +359,14 @@ library(caret)
 # ===============
 
 # model 1
-predictors1 <- c("phrase_pred", "title_pred", "geographic_pred", "subject_pred", "keywords_pred")
+predictors1 <- c("phrase_pred", "title_pred", "geographic_pred", "subject_pred", "keywords_pred", "source_pred")
 formula1 <- formula(paste("classify ~", 
                     paste(predictors1, collapse=" + "))
                     ) 
 formula1
 
 # model log.phrase_pred
-predictors_log <- c("log.phrase_pred", "title_pred", "geographic_pred", "subject_pred", "keywords_pred")
+predictors_log <- c("log.phrase_pred", "title_pred", "geographic_pred", "subject_pred", "keywords_pred", "source_pred")
 formula_log <- formula(paste("classify ~", 
                           paste(predictors_log, collapse=" + "))
 ) 
@@ -279,7 +375,7 @@ formula_log
 
 # model 2 interaction1
 predictors_interact <- c("phrase_pred", "title_pred", 
-                         "geographic_pred", "subject_pred", "keywords_pred", 
+                         "geographic_pred", "subject_pred", "keywords_pred", "source_pred",
                          "phrase_pred*keywords_pred")
 formula_interact <- formula(paste("classify ~", 
                           paste(predictors_interact, collapse=" + "))
@@ -297,6 +393,7 @@ sw_news_glm <- glm(formula =  formula1 ,
 sw_news_glm
 summary(sw_news_glm)
 exp(coef(sw_news_glm))
+format(exp(coef(sw_news_glm)), scientific = F, digits = 3)
 
 p <- predict(sw_news_glm, test, type = "response")
 
@@ -306,7 +403,7 @@ p <- predict(sw_news_glm, test, type = "response")
 # ====
 library(caTools)
 colAUC(p, test$classify, plotROC = T)
-# calculates AUC = .8529  
+# calculates AUC = .835
 
 thresh <- .5
 
@@ -347,13 +444,14 @@ p2 <- predict(sw_news_glm2, test, type = "response")
 # ROC
 # ====
 colAUC(p2, test$classify, plotROC = T)
-# calculates AUC = .8545 -> not difference from model1   
+# calculates AUC = .836 -> not difference from model1   
 
 thresh <- .5
 
 y_or_n2 <- ifelse(p2 > thresh, "y", "n")
 confusionMatrix(as.factor(y_or_n2), as.factor(test$classify), positive = "y")
 
+confusionMatrix(as.factor(y_or_n2), as.factor(test$classify))
 
 
 # Cross-validation with/without repeat
@@ -400,7 +498,7 @@ model_lm <- train(
     trControl = myControl
 )
 
-model_lm # Accuracy = .78 // ROC = .88
+model_lm #ROC = .823
 model_lm$finalModel 
 exp(model_lm$finalModel$coefficients) # odds ratio 
 
@@ -409,7 +507,7 @@ sd(model_lm$resample$Accuracy)
 
 model_lm$results  # accuracy, kappa, accuracySD, kappaSD
                   # accuracy = average across the ten [model_lm$resample]
-                  # ROC = .873, SD = .03
+                  # ROC = .823, SD = .04
                 
 
 
@@ -423,14 +521,14 @@ model_lm_repeatecv <- train(
                         trControl = myControl_repeatedcv
 )
 
-model_lm_repeatecv # Accuracy = .79 ; ROC = .88
+model_lm_repeatecv # ROC = .83 
 model_lm_repeatecv$finalModel 
 exp(model_lm_repeatecv$finalModel$coefficients) # odds ratio 
 
 model_lm_repeatecv$resample
 sd(model_lm_repeatecv$resample$Accuracy)
 
-model_lm_repeatecv$results # ROC = .8797, SD = .03
+model_lm_repeatecv$results # ROC = .83, SD = .04
 
 
 
@@ -443,16 +541,14 @@ model_lm_repeatecv_log <- train(
   trControl = myControl_repeatedcv
 )
 
-model_lm_repeatecv_log # Accuracy = .79 ; ROC = .88
+model_lm_repeatecv_log #  ; ROC = .826
 model_lm_repeatecv_log$finalModel 
 exp(model_lm_repeatecv_log$finalModel$coefficients) # odds ratio 
 
 model_lm_repeatecv_log$resample
 sd(model_lm_repeatecv_log$resample$Accuracy)
 
-model_lm_repeatecv_log$results # ROC = .8797, SD = .03
-
-
+model_lm_repeatecv_log$results # ROC = .826, SD = .035
 
 
 # GBM model (Stochastic Gradient Boosting)
@@ -465,7 +561,7 @@ model_gbm <- train(
     trControl = myControl_repeatedcv
 )
 
-model_gbm # Accuracy = .79 do we use this or below command?
+model_gbm 
 model_gbm$finalModel 
 #exp(model_gbm$finalModel$coefficients) # odds ratio 
 
@@ -496,8 +592,6 @@ model_gbm_logpred$results
 
 
 
-
-
 # RF
 # =======================================
 set.seed(222)
@@ -508,7 +602,7 @@ model_rf <- train(
     trControl = myControl_repeatedcv
 )
 
-model_rf # Accuracy = .80
+model_rf # ROC = .80
 model_rf$finalModel 
 #exp(model_gbm$finalModel$coefficients) # odds ratio 
 
