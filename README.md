@@ -1,3 +1,8 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 
 # Text-mining news on Social Work Profession in Singapore :singapore:
 

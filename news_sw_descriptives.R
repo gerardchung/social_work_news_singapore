@@ -76,12 +76,21 @@ for (value in an_swnews$pub_day) {
         print("No problem, move on!")
     }
 }
-    
 
-table(an_swnews$pub_day)
-table(an_swnews$pub_year)
-table(an_swnews$pub_month)
+table(an_swnews$pub_day, exclude = F)
+table(an_swnews$pub_year,exclude = F)
+table(an_swnews$pub_month, exclude = F)
 
+# Convert to DATA using lubricate
+date.lub <- c("pub_year","pub_month", "pub_day")
+an_swnews$pub.date <- lubridate::ymd(paste(an_swnews$pub_year, an_swnews$pub_month,an_swnews$pub_day))
+class(an_swnews$pub.date)
+
+an_swnews <- an_swnews %>% relocate(starts_with("pub_"), .after = pub.date)
+
+an_swnews %>% ggplot(aes(pub.date)) + geom_freqpoly(binwidth = 30) # R for data sci book pp.241
+
+# Do a summarize var for num of articles by year published for later plotting
 year_articles <- an_swnews %>% 
     group_by(pub_year) %>% 
     summarize(num_articles = n())
@@ -343,11 +352,13 @@ year2001 <- corpus_subset(title_corpus, pub_year == 2001)
 year2000 <- corpus_subset(title_corpus, pub_year == 2000) 
 year1999 <- corpus_subset(title_corpus, pub_year == 1999)
 year1996 <- corpus_subset(title_corpus, pub_year == 1996)
+year2020 <- corpus_subset(title_corpus, pub_year == 2020)
 
 View(year2001)
 View(year2000)
 View(year1999)
 View(year1996)
+View(year2020)
 table(an_swnews$pub_year)
 # point (Cleveland dot plot) + FORUM
 
