@@ -23,7 +23,7 @@ A total of 7167 articles downloaded in docx format
  
  (3) Date: All available dates 
  
- (4) Sources are the three newspapers in Singapore:
+ (4) Sources: Four newspapers in Singapore:
  
   * [Channel NewsAsia](https://www.channelnewsasia.com/news/singapore)
         
