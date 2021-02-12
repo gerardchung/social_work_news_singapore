@@ -81,14 +81,18 @@ table(an_swnews$pub_day, exclude = F)
 table(an_swnews$pub_year,exclude = F)
 table(an_swnews$pub_month, exclude = F)
 
+
 # Convert to DATA using lubricate
 date.lub <- c("pub_year","pub_month", "pub_day")
-an_swnews$pub.date <- lubridate::ymd(paste(an_swnews$pub_year, an_swnews$pub_month,an_swnews$pub_day))
-class(an_swnews$pub.date)
+an_swnews$pub_date <- lubridate::ymd(paste(an_swnews$pub_year, an_swnews$pub_month,an_swnews$pub_day))
+class(an_swnews$pub_date)
 
-an_swnews <- an_swnews %>% relocate(starts_with("pub_"), .after = pub.date)
+an_swnews <- an_swnews %>% 
+              relocate(starts_with("pub_"), .after = source) %>% 
+              select(-(pub.date))
+          
 
-an_swnews %>% ggplot(aes(pub.date)) + geom_freqpoly(binwidth = 30) # R for data sci book pp.241
+an_swnews %>% ggplot(aes(pub_date)) + geom_freqpoly(binwidth = 30) # R for data sci book pp.241
 
 # Do a summarize var for num of articles by year published for later plotting
 year_articles <- an_swnews %>% 
@@ -144,6 +148,10 @@ an_swnews <- an_swnews %>% mutate(source = replace(source, source == ("TODAY (Si
 an_swnews$source <-  replace(an_swnews$source, an_swnews$source =="The Straits Times (Singapore)" , "Straits Times")
 an_swnews$source <-  replace(an_swnews$source, an_swnews$source =="The Straits Times" , "Straits Times")
 
+an_swnews$source <-  replace(an_swnews$source, an_swnews$source =="Business Times (Singapore)" , "Business Times")
+an_swnews$source <-  replace(an_swnews$source, an_swnews$source =="The Business Times Singapore" , "Business Times")
+
+
 unique(an_swnews$source)
 an_swnews$source <- factor(an_swnews$source)
 table(an_swnews$source)
@@ -153,6 +161,11 @@ table(an_swnews$source)
 head(an_swnews$title)
 
 
+
+# Save for any future analyses
+##################################
+an_swnews_cleaned <- an_swnews
+save(an_swnews_cleaned, file = "an_data/an_swnews_cleaned.RData")
 
 
 ################ # article by year
