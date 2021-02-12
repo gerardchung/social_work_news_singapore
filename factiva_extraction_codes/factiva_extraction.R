@@ -115,7 +115,12 @@ rm(list=ls())
 #################################
     # https://lieselspangler.com/2017/11/16/how-to-load-and-append-multiple-files-in-r/
     # https://stackoverflow.com/questions/59966478/r-efficiently-bind-rows-over-many-dataframes-stored-on-harddrive
+rm(list=ls())
+
 getwd()
+library(stringr)
+library(dplyr)
+
 files.list <- list.files(path = "source_data_factiva/extracted_factiva", pattern = "Factiva[1-6].RData")
 file.list2 = paste("source_data_factiva/extracted_factiva",files.list, sep="/") 
 
@@ -124,6 +129,7 @@ data_list <- lapply(file.list2, function(f) {
     name <- load(f)                    # this should capture the name of the loaded object
     return(eval(parse(text = name)))   # returns the object with the name saved in `name`
 })
-results_table <- data.table::rbindlist(data_list, idcol = T) # idcol creates .id which is the number for Factiva1, Factiva2.....
+factiva_df <- data.table::rbindlist(data_list, idcol = T) # idcol creates .id which is the number for Factiva1, Factiva2.....
+factiva_df <- factiva_df %>%  rename (file_id  = .id)
 
-
+rm(file.list2, files.list, data_list)
