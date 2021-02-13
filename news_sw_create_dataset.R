@@ -15,8 +15,8 @@ getwd()
 
 
 # Extract file names
-file.list = list.files("source_data", pattern = "\\D", recursive = T) # recursive will perform in each directory 
-#file.list = list.files("source_data", recursive = T) # recursive will perform in each directory 
+file.list = list.files("source_data_nexis", pattern = "\\D", recursive = T) # recursive will perform in each directory 
+#file.list = list.files("source_data_nexis", recursive = T) # recursive will perform in each directory 
 
 # Remove those with "original_data" pattern
 file.list = str_subset(file.list, pattern = "original_data", negate = T) 
@@ -40,11 +40,11 @@ summary(as.numeric(foldernum))
 
 # Let's make those full file paths that can be used to download the files.
 file.list
-file.list2 = paste("source_data",file.list, sep="/") 
-                # source_data because /source_data
+file.list2 = paste("source_data_nexis",file.list, sep="/") 
+                # source_data_nexis because /source_data_nexis
                 # change if the directory is different
-                # paste source_data + file.list, separated by /
-                # e.g., source_data + / + 1/Desire to serve draws more t....docx 
+                # paste source_data_nexis + file.list, separated by /
+                # e.g., source_data_nexis + / + 1/Desire to serve draws more t....docx 
 
 #file.list2[1:2]
 
