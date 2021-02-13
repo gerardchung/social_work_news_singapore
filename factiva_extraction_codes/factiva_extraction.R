@@ -19,7 +19,7 @@ getwd()
     # this will extract the html files and conerts it into Vcorpus files
     # quanteda::corpus(v.corpus) converts Vcorpus to corpus
     # convert(corp_quanteda , to = c("data.frame"), pretty = FALSE) will convert corpus to dataframe
-source <- FactivaSource("source_data_factiva/factiva_raw/factiva_2000/Factiva1.html")
+source <- FactivaSource("source_data_factiva/factiva_raw/factiva_2020/Factiva118.html")
 v.corpus <- Corpus(source, readerControl = list(language = NA))
 inspect(v.corpus[1])
 meta(v.corpus[[1]])
@@ -33,6 +33,7 @@ corp_quanteda <- quanteda::corpus(v.corpus)
 summary(corp_quanteda)
 corp_df <- convert(corp_quanteda , to = c("data.frame"), pretty = FALSE)
 
+rm(corp_df, source, v.corpus, corp_quanteda)
 
 # the loop function
 ############################
@@ -121,7 +122,7 @@ getwd()
 library(stringr)
 library(dplyr)
 
-files.list <- list.files(path = "source_data_factiva/extracted_factiva", pattern = "Factiva[1-6].RData")
+files.list <- list.files(path = "source_data_factiva/extracted_factiva", pattern = "*.RData") # * => all the files
 file.list2 = paste("source_data_factiva/extracted_factiva",files.list, sep="/") 
 
 data_list <- lapply(file.list2, function(f) {
@@ -133,3 +134,11 @@ factiva_df <- data.table::rbindlist(data_list, idcol = T) # idcol creates .id wh
 factiva_df <- factiva_df %>%  rename (file_id  = .id)
 
 rm(file.list2, files.list, data_list)
+
+# Check
+#################
+unique(factiva_df$file_id) # Shld have 123 unique values becos 123 data files
+
+# Save dataframe 
+#################
+save(factiva_df, file = "source_data_factiva/factiva_df.RData")
