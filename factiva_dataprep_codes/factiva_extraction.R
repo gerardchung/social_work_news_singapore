@@ -25,6 +25,7 @@ getwd()
 
 # What I basically want to do with the loop later:
     # Using FactivaSource and Corpus from TM package and tm.plugin.factiva package, 
+    # https://www.rdocumentation.org/packages/tm.plugin.factiva/versions/1.8/topics/FactivaSource 
     # this will extract the html files and conerts it into Vcorpus files
     # quanteda::corpus(v.corpus) converts Vcorpus to corpus
     # convert(corp_quanteda , to = c("data.frame"), pretty = FALSE) will convert corpus to dataframe
