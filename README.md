@@ -28,15 +28,15 @@ A total of 10427 articles were downloaded in html format.
  
  (4) Sources: Five newspapers in Singapore:
  
-     * [Channel NewsAsia](https://www.channelnewsasia.com/news/singapore)
-           
-     * [Today (Singapore)](https://www.todayonline.com/)
-           
-     * [The Straits Times (Singapore)](https://www.straitstimes.com/global)
-           
-     * [The Business Times (Singapore)](https://www.businesstimes.com.sg/)
-     
-     * [The New Paper](https://www.tnp.sg/)
+  * [Channel NewsAsia](https://www.channelnewsasia.com/news/singapore)
+        
+  * [Today (Singapore)](https://www.todayonline.com/)
+        
+  * [The Straits Times (Singapore)](https://www.straitstimes.com/global)
+        
+  * [The Business Times (Singapore)](https://www.businesstimes.com.sg/)
+  
+  * [The New Paper](https://www.tnp.sg/)
         
  (5) Search string: "(social work) OR (social worker\*) OR (social-work) OR (social-worker\*)"
  
