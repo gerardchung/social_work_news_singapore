@@ -65,13 +65,19 @@ The model was then implemented to predict the rest of the articles. I used a thr
 After prediction, I also manually looked through the included articles to further assess articles that should not be included. 
 After further checking, another 500 articles were removed due to several reasons: 
   
-  (1) not from Singapore (e.g. social work in UK or USA)
-  (2) voluntary work 
-  (3) Summary of headline  (e.g., "What's news")
-  (4) Social workers who are interviewed for non-social work issues (e.g. winning a lucky draw)
-  (5) International or local Movies,talks, and dramas [often from Life section]
-  (6) Advertisments or upcoming weekend talks 
-  (7) Duplicates
+(1) not from Singapore (e.g. social work in UK or USA)
+
+(2) voluntary work
+
+(3) Summary of headline  (e.g., "What's news")
+
+(4) Social workers who are interviewed for non-social work issues (e.g. winning a lucky draw)
+
+(5) International or local Movies,talks, and dramas [often from Life section]
+
+(6) Advertisments or upcoming weekend talks 
+
+(7) Duplicates
 
 __Final Sample Size__: 7848
 
