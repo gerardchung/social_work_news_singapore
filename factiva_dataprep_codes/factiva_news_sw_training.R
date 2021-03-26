@@ -478,6 +478,7 @@ confusionMatrix(model_lm_repeatecv_log, norm = "none") # aggegrate across
 library(pROC)
 myRoc <- roc(predictor = model_gbm$pred$versicolor, response = model$pred$obs, positive = 'versicolor')
 plot(myRoc)
+plot(myRoc)
 
 #There are several ways to show the table entries. Using norm = "none" will show the  #aggregated counts of samples on each of the cells (across all resamples). For norm =  #"average", the average number of cell counts across resamples is computed (this can help  #evaluate how many holdout samples there were on average). The default is norm = "overall",  #which is equivalento to "average" but in percentages.
   
