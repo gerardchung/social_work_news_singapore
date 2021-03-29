@@ -52,6 +52,7 @@ title_df <-
     # Will drop docs with only one word
 
 title_df$one_wrd <-  stringi::stri_count(title_df$title, regex="\\w+")
+    # count number of words in each title
 
 title_df %>% tabyl(one_wrd)
 one_wrd.df <- title_df[title_df$one_wrd ==1] # titles  with one word
@@ -60,5 +61,35 @@ glimpse(one_wrd.df$title) # These one-worded titles will not be useful - drop in
 title_df <- title_df[title_df$one_wrd !=1] # remove docs with only 1 word in title
 NROW(title_df) # 7826 (after dropping 22 docs)
 
+# Titles with phrase
+#####################
 
+str_view_all(title_df$title[300:350], regex(pattern = "social work|social worker|social-work"))
 
+title_df$has.phrase <- str_detect(title_df$title, 
+                         regex(pattern = "social work|social worker|social-work" , ignore_case = T ))
+
+#View(title_df %>% select(title, has.phrase))
+title_df %>%  tabyl(has.phrase) # 418 doc has the phrase
+
+title_phraseDF <- title_df[has.phrase == T]
+
+# Sentiment analysis
+#####################
+    # using tokens will make them into lists
+title_tokens <- tokens(title_phraseDF$title) # list?
+title_tokens_lsd <- tokens_lookup(title_tokens, 
+                                  dictionary = data_dictionary_LSD2015,
+                                  exclusive = F,
+                                  nested_scope = "dictionary")
+    # exclusive = F will not delete words that are not in LSD
+    # nested_scope is relevant for LSD to avoid double-counting of negated and non-negated terms
+            
+title_tokens_lsd[1:10]
+    # negative here does not mean something bad about social work.
+    # negative is very broad which can mean that the social work profession has been mistaken e.g. a volunteer
+title_phraseDF$title[5]
+
+title_dfm_lsd <- dfm(title_tokens_lsd)
+title_dfm_lsd %>% tabyl(title_dfm_lsd@Dimnames$feaures)
+title_dfm_lsd@Dimnames$features["negative"]
