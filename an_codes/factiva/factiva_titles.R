@@ -64,7 +64,7 @@ NROW(title_df) # 7826 (after dropping 22 docs)
 # Titles with phrase
 #####################
 
-str_view_all(title_df$title[300:350], regex(pattern = "social work|social worker|social-work"))
+str_view_all(title_df$title[320:400], regex(pattern = "social work|social worker|social-work", ignore_case = T ))
 
 title_df$has.phrase <- str_detect(title_df$title, 
                          regex(pattern = "social work|social worker|social-work" , ignore_case = T ))
@@ -74,13 +74,19 @@ title_df %>%  tabyl(has.phrase) # 418 doc has the phrase
 
 title_phraseDF <- title_df[has.phrase == T]
 glimpse(title_phraseDF)
-# Convert corpus
-###############
 
-title_corp <- corpus(title_phraseDF,
+# Convert corpus for title sentiment analysis
+##############################################
+remove_phraseDF <- title_phraseDF
+str_view(remove_phraseDF$title[320:400], regex(pattern = "(social work\\w*)" , ignore_case = T))
+    # detect all social work, social worker, social workers phrases to remove before sentiment analysis
+
+remove_phraseDF$title <- str_remove_all(remove_phraseDF$title, regex(pattern = "(social work\\w*)" , ignore_case = T))
+
+title_corp <- corpus(remove_phraseDF,
                      text_field = "title")
 summary(summary(title_corp))
-
+ndoc(title_corp)
 
 # Sentiment analysis
 #####################
@@ -88,7 +94,8 @@ summary(summary(title_corp))
 
 # Convert into tokens and look-up using LSD dictionary
 # ==================================================
-title_tokens <- tokens(title_corp) # list?
+title_tokens <- tokens(title_corp, 
+                       remove_punct = T) # list?
 title_tokens_lsd <- tokens_lookup(title_tokens, 
                                   dictionary = data_dictionary_LSD2015,
                                   exclusive = T,
@@ -114,12 +121,11 @@ lsd_df <-
 glimpse(lsd_df)
 
 # Calculate sentiment value
-# ==================================================
+##########################
 
 # total number of terms per document. 
 # ============================================================
 all_words = dfm(title_tokens)
-lsd_df$total_words <- rowSums()
 lsd_df$total_words = rowSums(all_words)
 
 # Calculate valence
@@ -127,6 +133,7 @@ lsd_df$total_words = rowSums(all_words)
 tabyl(lsd_df$neg_positive)
 tabyl(lsd_df$neg_negative)
 tabyl(lsd_df$positive)
+tabyl(lsd_df$negative)
 
 lsd_df$positiveSum <- lsd_df$positive + lsd_df$neg_negative
 lsd_df$negativeSum <- lsd_df$negative + lsd_df$neg_positive
@@ -137,14 +144,15 @@ lsd_df$valence <-
     (lsd_df$positiveSum/lsd_df$total_words) -
     (lsd_df$negativeSum/lsd_df$total_words)
 
+             
+# Valence by year
+###################
 lsd_year <- 
     lsd_df %>% 
     group_by(pub_year) %>% 
     summarise(valence_mean = mean(valence)) 
-View(lsd_year %>% select(pub_year, valence_mean))
-                
-# Valence by year
-###################
+#View(lsd_year %>% select(pub_year, valence_mean))
+
     # https://ggplot2.tidyverse.org/reference/geom_smooth.html
 p <- ggplot(lsd_year, mapping = aes(x = pub_year, valence_mean))
 p + geom_point() +
@@ -155,20 +163,152 @@ library(moderndive)
 valence_lm <- lm(valence_mean ~ pub_year, data = lsd_year)
 get_regression_table(valence_lm)
 
+# Valence by month
+###################
+
+glimpse(lsd_df)
+class(lsd_df$pub_date)
+
+lsd_df <- 
+    lsd_df %>% 
+    mutate(neg_pos_val = ifelse(valence < 0, 0, 1 ))
+
+lsd_plot_day <- 
+    lsd_df %>% 
+   filter(valence != 0) %>% 
+    filter(source_pred == "Straits Times") %>% 
+    ggplot(aes(x = pub_date, y = valence, group =neg_pos_val ))
+
+lsd_plot_day_novalence <- 
+    lsd_df %>% 
+    filter(valence == 0) %>% 
+    filter(source_pred == "Straits Times")
+
+lsd_plot_day + 
+    geom_point(alpha = .5 ) +
+    geom_smooth(method = "loess") +
+#    geom_point(data = lsd_plot_day_novalence, aes(x = pub_date, y = valence)) +
+    theme_minimal(base_family = "Roboto Condensed")
+
+lsd_plot_day + 
+    geom_point(alpha = .5, aes(color = neg_pos_val)) +
+    geom_smooth(method = "lm") +
+    geom_point(data = lsd_plot_day_novalence, aes(x = pub_date, y = valence)) +
+    theme_minimal(base_family = "Roboto Condensed")
 
 
-###
-title_dfm_lsd <- dfm(title_tokens_lsd)
-head(title_dfm_lsd[,1])
-title_phraseDF$negative <- as.numeric(title_dfm_lsd[,1])
-title_phraseDF$positive <- as.numeric(title_dfm_lsd[,2])
-title_phraseDF$neg_postive <- as.numeric(title_dfm_lsd[,3])
-title_phraseDF$neg_negative <- as.numeric(title_dfm_lsd[,4])
 
-title_phraseDF %>% tabyl(negative)
-title_phraseDF %>% tabyl(positive)
-title_phraseDF %>% tabyl(neg_postive)
-title_phraseDF %>% tabyl(neg_negative)
+# KWIC social work phrase in title
+##################################
 
-title_dfm_lsd %>% tabyl(title_dfm_lsd[,1])
-title_dfm_lsd@Dimnames$features["negative"]
+NROW(title_phraseDF)
+glimpse(title_phraseDF$title)
+
+# Convert to corpus
+# ==================
+    # have to go back and use the initial dataframe because in previous analysis
+    # I already removed key phrase social work 
+wordcontext_corp <- corpus(title_phraseDF,
+                           text_field = "title"
+                           )
+# Tokenize
+# ========
+wordcontext_tok <- tokens(wordcontext_corp, 
+                      remove_punct = T)
+
+# Get window and then remove the key phrase
+# ========================================
+keyphrase <- c("social-work", "social work*")
+
+wordcontext_phrase_tok <- tokens_keep(wordcontext_tok, 
+                pattern = phrase(keyphrase), window = 5 )
+    # tokens_keep keeps the window of +- 5 words including the key phrase
+wordcontext_phrase_tok[4]
+
+wordcontext_phrase_tok_removed <- tokens_remove(wordcontext_phrase_tok,
+                                        pattern = phrase(keyphrase)) 
+    # tokens_remove will remove the key phrase tokens
+wordcontext_phrase_tok_removed[4]
+
+# LSD dictionary look-up
+# ======================
+wordcontext_lsd <- tokens_lookup(wordcontext_phrase_tok_removed,
+                                 dictionary = data_dictionary_LSD2015,
+                                 exclusive = T,
+                                 nested_scope = "dictionary")
+
+# Convert back to DFM -> then DF -> and bind in the meta-doc vars
+# =================================================
+class(wordcontext_lsd)
+
+lsd_wordcontext_dfm <- dfm(wordcontext_lsd) 
+
+lsd_wordcontext_df <- 
+    convert(lsd_wordcontext_dfm, to = "data.frame") %>%
+    cbind(docvars(lsd_wordcontext_dfm))
+    
+glimpse(lsd_wordcontext_df)
+
+# Calculate sentiment value [word context]
+############################################
+
+# total number of terms per document. 
+# ============================================================
+all_words_wordcontext = dfm(wordcontext_tok)
+lsd_wordcontext_df$total_words = rowSums(all_words_wordcontext)
+
+tabyl(lsd_wordcontext_df$total_words)
+
+# Calculate valence
+# ================
+tabyl(lsd_wordcontext_df$neg_positive)
+tabyl(lsd_wordcontext_df$neg_negative)
+tabyl(lsd_wordcontext_df$positive)
+tabyl(lsd_wordcontext_df$negative)
+
+lsd_wordcontext_df$positiveSum <- lsd_wordcontext_df$positive + lsd_wordcontext_df$neg_negative
+lsd_wordcontext_df$negativeSum <- lsd_wordcontext_df$negative + lsd_wordcontext_df$neg_positive
+tabyl(lsd_wordcontext_df$positiveSum)
+tabyl(lsd_wordcontext_df$negativeSum)
+
+lsd_wordcontext_df$valence <- 
+    (lsd_wordcontext_df$positiveSum/lsd_wordcontext_df$total_words) -
+    (lsd_wordcontext_df$negativeSum/lsd_wordcontext_df$total_words)
+
+
+# Valence by year [word context]
+################################
+lsd_wordcontext_year <- 
+    lsd_wordcontext_df %>% 
+    group_by(pub_year) %>% 
+    summarise(valence_mean = mean(valence)) 
+# View(lsd_wordcontext_year %>% select(pub_year, valence_mean))
+
+q <- ggplot(lsd_wordcontext_year, mapping = aes(x = pub_year, valence_mean))
+q + geom_point() +
+    # geom_line() +
+    geom_smooth(method = "lm")
+
+library(moderndive)
+valence_wordcontext_lm <- lm(valence_mean ~ pub_year, data = lsd_wordcontext_year)
+get_regression_table(valence_wordcontext_lm)
+
+# Valence by month [word context]
+##################################
+
+
+
+lsd_wordcontext_df <- 
+    lsd_wordcontext_df %>% 
+    mutate(neg_pos_val = ifelse(valence < 0, 0, 1 ))
+
+lsd_wordcontext_plot_day <- 
+    lsd_wordcontext_df %>% 
+    filter(valence != 0) %>% 
+    filter(source_pred == "Straits Times") %>% 
+    ggplot(aes(x = pub_date, y = valence, group =neg_pos_val ))
+
+lsd_wordcontext_plot_day + 
+    geom_point() +
+    geom_smooth(method = "loess")
+    
